@@ -43,7 +43,15 @@ fun LibraryScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
-            val fileName = uri.lastPathSegment ?: "score.musicxml"
+            var fileName = uri.lastPathSegment ?: "score.musicxml"
+            try {
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (cursor.moveToFirst() && nameIdx >= 0) {
+                        fileName = cursor.getString(nameIdx)
+                    }
+                }
+            } catch (_: Exception) {}
             val inputStream = context.contentResolver.openInputStream(uri)
             if (inputStream != null) {
                 onImportFile(inputStream, fileName)

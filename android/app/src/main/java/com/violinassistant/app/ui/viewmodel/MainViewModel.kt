@@ -138,10 +138,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun importCustomScore(inputStream: InputStream, fileName: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val xml = if (fileName.endsWith(".mxl", ignoreCase = true)) {
-                    MxlReader.extractXml(inputStream)
+                val bytes = inputStream.readBytes()
+                val isZip = bytes.size >= 4 &&
+                    bytes[0] == 0x50.toByte() &&
+                    bytes[1] == 0x4B.toByte()
+
+                val xml = if (fileName.endsWith(".mxl", ignoreCase = true) || isZip) {
+                    MxlReader.extractXml(bytes.inputStream())
                 } else {
-                    inputStream.bufferedReader(Charsets.UTF_8).readText()
+                    String(bytes, Charsets.UTF_8)
                 }
 
                 val title = fileName.substringBeforeLast('.')

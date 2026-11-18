@@ -1,6 +1,7 @@
 package com.violinassistant.app.data
 
 import com.violinassistant.app.model.AppSettings
+import com.violinassistant.app.musicxml.MxlReader
 import com.violinassistant.app.musicxml.SampleScores
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,8 +19,8 @@ data class SyncResult(
 
 class GitHubSyncService(private val scoreDao: ScoreDao) {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
     suspend fun seedBuiltInScoresIfEmpty() = withContext(Dispatchers.IO) {
@@ -97,7 +98,21 @@ class GitHubSyncService(private val scoreDao: ScoreDao) {
                     val fileRes = client.newCall(fileReq).execute()
 
                     if (fileRes.isSuccessful) {
-                        val xml = fileRes.body?.string().orEmpty()
+                        val bodyBytes = fileRes.body?.bytes() ?: byteArrayOf()
+                        val isZip = bodyBytes.size >= 4 &&
+                            bodyBytes[0] == 0x50.toByte() &&
+                            bodyBytes[1] == 0x4B.toByte()
+
+                        val xml = try {
+                            if (file.endsWith(".mxl", ignoreCase = true) || isZip) {
+                                MxlReader.extractXml(bodyBytes.inputStream())
+                            } else {
+                                String(bodyBytes, Charsets.UTF_8)
+                            }
+                        } catch (e: Exception) {
+                            ""
+                        }
+
                         if (xml.contains("score-partwise") || xml.contains("score-timewise")) {
                             scoreDao.insertOrUpdate(
                                 ScoreEntity(

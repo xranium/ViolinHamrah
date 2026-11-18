@@ -38,4 +38,21 @@ class MusicXmlParserTest {
     fun testMalformedXmlThrowsException() {
         MusicXmlParser.parse("invalid non-xml text")
     }
+
+    @Test
+    fun testMxlExtractionAndParsing() {
+        val baos = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(baos).use { zos ->
+            zos.putNextEntry(java.util.zip.ZipEntry("META-INF/container.xml"))
+            zos.write("""<?xml version="1.0"?><container><rootfiles><rootfile full-path="score.musicxml"/></rootfiles></container>""".toByteArray())
+            zos.closeEntry()
+            zos.putNextEntry(java.util.zip.ZipEntry("score.musicxml"))
+            zos.write(SAMPLE_ODE_TO_JOY_XML.toByteArray(Charsets.UTF_8))
+            zos.closeEntry()
+        }
+
+        val extracted = com.violinassistant.app.musicxml.MxlReader.extractXml(baos.toByteArray().inputStream())
+        val parsed = MusicXmlParser.parse(extracted)
+        assertEquals("سرود شادی", parsed.metadata.title)
+    }
 }
