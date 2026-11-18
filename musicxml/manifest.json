@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "lastUpdated": "2026-11-18",
   "sheets": [
     {
@@ -31,6 +31,16 @@
       "description": "تمرین پایه‌ای موقعیت انگشتان و آرشه‌کشی",
       "version": 1,
       "file": "musicxml/d_major_scale.musicxml"
+    },
+    {
+      "id": "im-just-ken",
+      "title": "I'm Just Ken",
+      "composer": "Ryan Gosling (arr. Ke Fan)",
+      "difficulty": "INTERMEDIATE",
+      "category": "POPULAR",
+      "description": "قطعه I'm Just Ken با فرمت MXL",
+      "version": 1,
+      "file": "musicxml/im-just-ken-ryan-gosling.mxl"
     }
   ]
 }
