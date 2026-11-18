@@ -23,8 +23,9 @@
 - **زبان برنامه‌نویسی:** Kotlin
 - **رابط کاربری:** Jetpack Compose & Material Design 3
 - **معماری نرم‌افزاری:** MVVM با استفاده از Kotlin Coroutines و StateFlow
-- **پردازش صوت و فرکانس:** Android AudioRecord API (16-bit PCM, 44.1kHz) و الگوریتم بومی MPM
-- **رندر نتها:** کتابخانه OpenSheetMusicDisplay (OSMD) در قالب صفحه کتاب LTR
+- **پردازش صوت و فرکانس:** Android AudioRecord API (16-bit PCM, 44.1kHz)، الگوریتم بومی MPM به همراه تثبیت‌کننده فرکانس پشته‌ای (FrequencyStackDebouncer برگرفته از مهندسی معکوس Trala)
+- **مجموعه قطعات و تمرینات:** بیش از ۱۳۰ قطعه و اتود استاندارد شامل قطعات آموزشی و کلاسیک Trala و موسیقی ایرانی و خاطره‌انگیز
+- **رندر نتها:** کتابخانه OpenSheetMusicDisplay (OSMD) در قالب صفحه کتاب LTR با هایلایت کرسر پیشرفته
 - **پایگاه‌داده محلی آفلاین:** Room Database (SQLite)
 - **ارتباط شبکه و گیت‌هاب:** OkHttp Client
 - **سیستم بیلد:** Gradle با Android Gradle Plugin (AGP)

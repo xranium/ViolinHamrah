@@ -6,14 +6,19 @@ import kotlin.math.abs
 import kotlin.math.ln
 import kotlin.math.sqrt
 
+/**
+ * High-accuracy Violin Pitch Detector inspired by Trala's native audio engine.
+ * Employs McLeod Pitch Method (NSDF) with parabolic interpolation,
+ * violin-specific acoustic filtering (G3 to E7), harmonic check, and temporal smoothing.
+ */
 class ViolinPitchDetector(
     private var tuningRefHz: Int = 440
 ) {
     companion object {
-        const val MIN_VIOLIN_FREQ = 180f  // Below G3 (196 Hz)
+        const val MIN_VIOLIN_FREQ = 185f  // Just below G3 (196 Hz)
         const val MAX_VIOLIN_FREQ = 2700f // Up to E7 (2637 Hz)
-        const val MIN_RMS_VOLUME = 0.012f // Silence threshold
-        const val CLARITY_THRESHOLD = 0.80f // McLeod confidence threshold
+        const val MIN_RMS_VOLUME = 0.015f // Acoustic squelch threshold for violin
+        const val CLARITY_THRESHOLD = 0.78f // McLeod confidence threshold
         const val HISTORY_SIZE = 5
     }
 
@@ -39,7 +44,7 @@ class ViolinPitchDetector(
             return null
         }
 
-        // 2. McLeod Pitch Method (Normalized Square Difference Function - NSDF)
+        // 2. McLeod Pitch Method (NSDF - Normalized Square Difference Function)
         val maxTau = (sampleRate / MIN_VIOLIN_FREQ).toInt().coerceAtMost(n / 2)
         val minTau = (sampleRate / MAX_VIOLIN_FREQ).toInt().coerceAtLeast(2)
 
@@ -68,12 +73,11 @@ class ViolinPitchDetector(
                     if (nsdf[tau] > bestClarity) {
                         bestClarity = nsdf[tau]
                         bestTau = tau
-                        // If clarity exceeds high confidence, accept early peak to avoid octave subharmonic
+                        // If clarity exceeds threshold, accept early peak (avoids subharmonic octave doubling)
                         if (bestClarity >= CLARITY_THRESHOLD) break
                     }
                 }
             } else if (positiveRegion && bestTau != -1) {
-                // Passed first positive peak lobe
                 break
             }
         }
@@ -86,7 +90,8 @@ class ViolinPitchDetector(
         val alpha = nsdf[bestTau - 1]
         val beta = nsdf[bestTau]
         val gamma = nsdf[bestTau + 1]
-        val delta = (gamma - alpha) / (2f * (2f * beta - alpha - gamma) + 0.00001f)
+        val denom = 2f * (2f * beta - alpha - gamma)
+        val delta = if (abs(denom) > 0.00001f) (gamma - alpha) / denom else 0f
         val accurateTau = bestTau + delta
 
         val detectedFreq = sampleRate / accurateTau
@@ -94,7 +99,7 @@ class ViolinPitchDetector(
             return null
         }
 
-        // 5. Temporal Smoothing (Median Filter to smooth vibrato and reject transients)
+        // 5. Temporal Smoothing (Median Filter to smooth vibrato and reject transient outliers)
         pitchHistory.add(detectedFreq)
         if (pitchHistory.size > HISTORY_SIZE) {
             pitchHistory.removeAt(0)
@@ -103,11 +108,11 @@ class ViolinPitchDetector(
         val sorted = pitchHistory.sorted()
         val medianFreq = sorted[sorted.size / 2]
 
-        // Stability check: recent detections must be within 60 cents of median
-        var isStable = pitchHistory.size >= 3
+        // Stability check: detections must be within 50 cents of median
+        var isStable = pitchHistory.size >= 2
         for (p in pitchHistory) {
             val centsDiff = abs(1200f * (ln(p / medianFreq) / ln(2f)))
-            if (centsDiff > 60f) {
+            if (centsDiff > 50f) {
                 isStable = false
                 break
             }

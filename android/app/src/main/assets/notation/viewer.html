@@ -14,16 +14,26 @@
       overflow-y: auto;
       direction: ltr !important;
       -webkit-font-smoothing: antialiased;
+      font-family: sans-serif;
     }
     #osmdContainer {
       width: 100%;
       min-height: 100%;
-      padding: 16px 12px 60px 12px;
+      padding: 18px 12px 70px 12px;
       direction: ltr !important;
       background: #ffffff;
     }
     svg {
       background: #ffffff !important;
+      display: block;
+      margin: 0 auto;
+    }
+    /* Trala-style clean high-contrast notation */
+    .osmd-cursor {
+      transition: all 0.15s ease-out;
+      border-left: 3px solid #2563eb !important;
+      opacity: 0.85 !important;
+      box-shadow: 0 0 6px rgba(37, 99, 235, 0.4);
     }
   </style>
 </head>
@@ -41,6 +51,7 @@
         drawTitle: true,
         drawComposer: true,
         followCursor: true,
+        drawPartNames: false,
         drawingParameters: 'default'
       });
       isReady = true;
@@ -55,14 +66,24 @@
         window.pendingXml = xml;
         return;
       }
-      osmd.load(xml).then(function() {
-        osmd.zoom = 0.85;
-        osmd.render();
-        osmd.cursor.show();
-        osmd.cursor.reset();
-      }).catch(function(err) {
-        console.error('OSMD load error:', err);
-      });
+      try {
+        osmd.load(xml).then(function() {
+          osmd.zoom = 0.88;
+          osmd.render();
+          if (osmd.cursor) {
+            osmd.cursor.show();
+            osmd.cursor.reset();
+            const elem = osmd.cursor.cursorElement;
+            if (elem) {
+              elem.classList.add('osmd-cursor');
+            }
+          }
+        }).catch(function(err) {
+          console.error('OSMD load error:', err);
+        });
+      } catch (e) {
+        console.error('Exception loading score:', e);
+      }
     };
 
     window.setCursor = function(index, colorHex) {
@@ -76,10 +97,14 @@
         }
         const cursorElem = osmd.cursor.cursorElement;
         if (cursorElem) {
-          cursorElem.style.borderLeftColor = colorHex || '#2563eb';
+          const color = colorHex || '#2563eb';
+          cursorElem.style.borderLeftColor = color;
+          cursorElem.style.boxShadow = '0 0 8px ' + color;
           cursorElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('Error in setCursor:', e);
+      }
     };
   </script>
 </body>

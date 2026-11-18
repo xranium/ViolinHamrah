@@ -1,37 +1,16 @@
 package com.violinassistant.app.practice
 
+import com.violinassistant.app.audio.FrequencyStackDebouncer
 import com.violinassistant.app.model.NoteEvent
 import com.violinassistant.app.model.NoteStatus
 import com.violinassistant.app.model.PitchResult
 import com.violinassistant.app.model.PracticeMode
 
-enum class EngineStatus {
-    IDLE,
-    WAITING_FOR_NOTE,
-    MEASURING_DURATION,
-    COMPLETED_CORRECTLY,
-    COMPLETED_WITH_ERROR,
-    FINISHED
-}
-
-data class PracticeEngineState(
-    val status: EngineStatus = EngineStatus.IDLE,
-    val currentIndex: Int = 0,
-    val totalNotes: Int = 0,
-    val noteStatuses: Map<Int, NoteStatus> = emptyMap(),
-    val evaluations: List<EvaluationRecord> = emptyList(),
-    val totalWrongAttempts: Int = 0,
-    val overallScore: Int? = null,
-    val currentExpectedNote: NoteEvent? = null,
-    val detectedPitch: PitchResult? = null,
-    val sessionStartTime: Long = 0L,
-    val sessionDurationSec: Long = 0L
-)
-
 class PracticeEngine(
     private val notes: List<NoteEvent>,
     private val tolerancePercent: Int = 20,
     private val practiceMode: PracticeMode = PracticeMode.GUIDED,
+    private val debouncer: FrequencyStackDebouncer? = null,
     private val onStateChange: ((PracticeEngineState) -> Unit)? = null
 ) {
     private var currentIndex = 0
@@ -57,6 +36,7 @@ class PracticeEngine(
         currentNoteWrongCount = 0
         notePitchStartTimestamp = null
         lastPitchCents = 0
+        debouncer?.reset()
         sessionStartTime = System.currentTimeMillis()
         status = if (notes.isNotEmpty()) EngineStatus.WAITING_FOR_NOTE else EngineStatus.FINISHED
 
@@ -73,14 +53,14 @@ class PracticeEngine(
 
         val currentNote = notes[currentIndex]
 
-        // Handle rest notes automatically
+        // Rest notes advance automatically
         if (currentNote.isRest) {
             advanceCurrentNote(true, true, 0, currentNote.expectedDurationSec)
             notifyState(pitchResult)
             return
         }
 
-        // Case D & E: Silence or uncertain pitch
+        // Silence or unstable pitch
         if (pitchResult == null || !pitchResult.isStable) {
             if (notePitchStartTimestamp != null) {
                 val sustainedSec = (System.currentTimeMillis() - notePitchStartTimestamp!!) / 1000f
@@ -88,10 +68,8 @@ class PracticeEngine(
 
                 val durResult = DurationEvaluator.evaluate(currentNote.expectedDurationSec, sustainedSec, tolerancePercent)
                 if (durResult.isAcceptable) {
-                    // Case B: Correct pitch with acceptable duration
                     advanceCurrentNote(true, true, lastPitchCents, sustainedSec)
                 } else {
-                    // Case C: Correct pitch with wrong duration -> mark red and advance
                     advanceCurrentNote(true, false, lastPitchCents, sustainedSec)
                 }
             }
@@ -99,13 +77,12 @@ class PracticeEngine(
             return
         }
 
-        val playedMidi = pitchResult.midi
+        val playedMidi = debouncer?.filterMidi(pitchResult.midi) ?: pitchResult.midi
         val expectedMidi = currentNote.midi
         lastPitchCents = pitchResult.centsDeviation
 
-        // Case comparison
         if (playedMidi == expectedMidi) {
-            // Correct pitch!
+            // Correct pitch confirmed
             if (notePitchStartTimestamp == null) {
                 notePitchStartTimestamp = System.currentTimeMillis()
                 status = EngineStatus.MEASURING_DURATION
@@ -120,11 +97,12 @@ class PracticeEngine(
                 advanceCurrentNote(true, durResult.isAcceptable, pitchResult.centsDeviation, sustainedSec)
             }
         } else {
-            // Case A: Wrong pitch -> mark feedback, do NOT advance, stay on currentIndex
+            // Wrong pitch
             notePitchStartTimestamp = null
             noteStatuses[currentIndex] = NoteStatus.WRONG_PITCH
             totalWrongAttempts++
             currentNoteWrongCount++
+            debouncer?.startDebounce()
             status = EngineStatus.WAITING_FOR_NOTE
         }
 
@@ -163,6 +141,7 @@ class PracticeEngine(
         currentIndex++
         currentNoteWrongCount = 0
         notePitchStartTimestamp = null
+        debouncer?.startDebounce()
 
         if (currentIndex >= notes.size) {
             status = EngineStatus.FINISHED
