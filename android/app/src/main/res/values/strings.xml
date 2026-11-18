@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ویولن همراه</string>
+    <string name="title_activity_main">ویولن همراه</string>
+    <string name="package_name">com.violinassistant.app</string>
+</resources>

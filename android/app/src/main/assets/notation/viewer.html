@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <script src="opensheetmusicdisplay.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+      overflow-x: hidden;
+      overflow-y: auto;
+      direction: ltr !important;
+      -webkit-font-smoothing: antialiased;
+    }
+    #osmdContainer {
+      width: 100%;
+      min-height: 100%;
+      padding: 16px 12px 60px 12px;
+      direction: ltr !important;
+      background: #ffffff;
+    }
+    svg {
+      background: #ffffff !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="osmdContainer"></div>
+  <script>
+    let osmd = null;
+    let isReady = false;
+
+    window.onload = function() {
+      const container = document.getElementById('osmdContainer');
+      osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(container, {
+        autoResize: true,
+        backend: 'svg',
+        drawTitle: true,
+        drawComposer: true,
+        followCursor: true,
+        drawingParameters: 'default'
+      });
+      isReady = true;
+      if (window.pendingXml) {
+        window.loadScore(window.pendingXml);
+        window.pendingXml = null;
+      }
+    };
+
+    window.loadScore = function(xml) {
+      if (!isReady || !osmd) {
+        window.pendingXml = xml;
+        return;
+      }
+      osmd.load(xml).then(function() {
+        osmd.zoom = 0.85;
+        osmd.render();
+        osmd.cursor.show();
+        osmd.cursor.reset();
+      }).catch(function(err) {
+        console.error('OSMD load error:', err);
+      });
+    };
+
+    window.setCursor = function(index, colorHex) {
+      if (!osmd || !osmd.cursor) return;
+      try {
+        osmd.cursor.reset();
+        for (let i = 0; i < index; i++) {
+          if (!osmd.cursor.iterator.EndReached) {
+            osmd.cursor.next();
+          }
+        }
+        const cursorElem = osmd.cursor.cursorElement;
+        if (cursorElem) {
+          cursorElem.style.borderLeftColor = colorHex || '#2563eb';
+          cursorElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      } catch (e) {}
+    };
+  </script>
+</body>
+</html>
