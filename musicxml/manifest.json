@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "lastUpdated": "2026-11-18",
   "sheets": [
     {
@@ -33,14 +33,14 @@
       "file": "musicxml/d_major_scale.musicxml"
     },
     {
-      "id": "im-just-ken",
-      "title": "I'm Just Ken",
-      "composer": "Ryan Gosling (arr. Ke Fan)",
+      "id": "titanic",
+      "title": "تایتانیک (Titanic)",
+      "composer": "جیمز هورنر (تنظیم: رضا حیاتی)",
       "difficulty": "INTERMEDIATE",
-      "category": "POPULAR",
-      "description": "قطعه I'm Just Ken با فرمت MXL",
+      "category": "SOUNDTRACK",
+      "description": "موسیقی متن خاطره‌انگیز فیلم تایتانیک در فا ماژور برای ویولن I از کتاب سودای کمانه",
       "version": 1,
-      "file": "musicxml/im-just-ken-ryan-gosling.mxl"
+      "file": "musicxml/titanic.musicxml"
     }
   ]
 }

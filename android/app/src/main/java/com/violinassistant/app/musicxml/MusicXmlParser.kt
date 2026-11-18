@@ -12,8 +12,8 @@ object MusicXmlParser {
     fun parse(xmlString: String, overrideMeta: ScoreMetadata? = null): ParsedScore {
         require(xmlString.isNotBlank()) { "محتوای فایل نت خالی است." }
 
-        // Sanitize doctype to prevent XXE
-        val cleanXml = xmlString.replace(Regex("<!DOCTYPE[^>]*>", RegexOption.IGNORE_CASE), "")
+        // Strip UTF-8 BOM and sanitize doctype to prevent XXE
+        val cleanXml = xmlString.trim().removePrefix("\uFEFF").replace(Regex("<!DOCTYPE[^>]*>", RegexOption.IGNORE_CASE), "")
 
         val factory = DocumentBuilderFactory.newInstance()
         factory.isNamespaceAware = false

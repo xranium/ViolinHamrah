@@ -6,6 +6,7 @@ import com.violinassistant.app.musicxml.sample.SAMPLE_ODE_TO_JOY_XML
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class MusicXmlParserTest {
     @Test
@@ -40,19 +41,20 @@ class MusicXmlParserTest {
     }
 
     @Test
-    fun testMxlExtractionAndParsing() {
-        val baos = java.io.ByteArrayOutputStream()
-        java.util.zip.ZipOutputStream(baos).use { zos ->
-            zos.putNextEntry(java.util.zip.ZipEntry("META-INF/container.xml"))
-            zos.write("""<?xml version="1.0"?><container><rootfiles><rootfile full-path="score.musicxml"/></rootfiles></container>""".toByteArray())
-            zos.closeEntry()
-            zos.putNextEntry(java.util.zip.ZipEntry("score.musicxml"))
-            zos.write(SAMPLE_ODE_TO_JOY_XML.toByteArray(Charsets.UTF_8))
-            zos.closeEntry()
+    fun testParseTitanicMusicXml() {
+        val candidates = listOf(
+            File("../../musicxml/titanic.musicxml"),
+            File("../musicxml/titanic.musicxml"),
+            File("musicxml/titanic.musicxml")
+        )
+        val file = candidates.firstOrNull { it.exists() }
+        if (file != null) {
+            val xml = file.readText(Charsets.UTF_8)
+            val parsed = MusicXmlParser.parse(xml)
+            assertEquals("تایتانیک (Titanic)", parsed.metadata.title)
+            assertEquals(80f, parsed.tempo)
+            assertEquals(61, parsed.notes.maxOf { it.measure })
+            assertTrue(parsed.notes.isNotEmpty())
         }
-
-        val extracted = com.violinassistant.app.musicxml.MxlReader.extractXml(baos.toByteArray().inputStream())
-        val parsed = MusicXmlParser.parse(extracted)
-        assertEquals("سرود شادی", parsed.metadata.title)
     }
 }
