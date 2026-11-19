@@ -19,7 +19,7 @@ object AppConfig {
      * حداکثر انحراف مجاز فرکانس بر حسب سِنت (Cents):
      * مقدار پیش‌فرض: 30 سِنت
      */
-    const val PITCH_TOLERANCE_CENTS = 30
+    const val PITCH_TOLERANCE_CENTS = 50
 
     /**
      * درصد تلورانس و خطای مجاز برای کشش زمانی (دیرند) نتها:

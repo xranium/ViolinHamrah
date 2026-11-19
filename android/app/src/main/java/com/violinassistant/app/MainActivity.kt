@@ -2,6 +2,7 @@ package com.violinassistant.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
@@ -14,6 +15,7 @@ import com.violinassistant.app.data.ScoreEntity
 import com.violinassistant.app.ui.navigation.BottomNavBar
 import com.violinassistant.app.ui.navigation.Screen
 import com.violinassistant.app.ui.screens.*
+import com.violinassistant.app.ui.screens.practice.PracticeScreen
 import com.violinassistant.app.ui.theme.ViolinHamrahTheme
 import com.violinassistant.app.ui.viewmodel.MainViewModel
 
@@ -28,6 +30,11 @@ class MainActivity : ComponentActivity() {
                 var currentScreen by remember { mutableStateOf(Screen.HOME) }
                 var viewingScore by remember { mutableStateOf<ScoreEntity?>(null) }
 
+                BackHandler(enabled = viewingScore != null) {
+                    viewModel.stopPractice()
+                    viewingScore = null
+                }
+
                 val scores by viewModel.scores.collectAsState()
                 val sessions by viewModel.sessions.collectAsState()
                 val engineState by viewModel.engineState.collectAsState()
@@ -38,15 +45,17 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
-                        BottomNavBar(
-                            currentScreen = currentScreen,
-                            onScreenSelected = { screen ->
-                                currentScreen = screen
-                                if (screen != Screen.LIBRARY) {
-                                    viewingScore = null
+                        if (viewingScore == null) {
+                            BottomNavBar(
+                                currentScreen = currentScreen,
+                                onScreenSelected = { screen ->
+                                    currentScreen = screen
+                                    if (screen != Screen.LIBRARY) {
+                                        viewingScore = null
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 ) { innerPadding ->
                     Box(

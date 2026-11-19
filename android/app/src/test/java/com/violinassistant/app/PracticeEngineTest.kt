@@ -68,15 +68,70 @@ class PracticeEngineTest {
     @Test
     fun testCaseBWrongThenCorrectPitchAdvances() {
         // 1. Wrong attempt
-        engine.processAudioInput(mockPitch(62))
+        engine.processAudioInput(mockPitch(62), timestampMs = 1000L)
         assertEquals(0, engine.getState().currentIndex)
 
         // 2. Play correct note
-        engine.processAudioInput(mockPitch(60))
+        engine.processAudioInput(mockPitch(60), timestampMs = 1100L)
         assertEquals(0, engine.getState().currentIndex)
 
-        // 3. Release note
-        engine.processAudioInput(null)
+        // 3. Release note after sustaining > 20ms
+        engine.processAudioInput(null, timestampMs = 1200L)
         assertEquals(1, engine.getState().currentIndex)
+    }
+
+    @Test
+    fun testTransientNoiseUnder20msDoesNotAdvance() {
+        // 10 ms transient noise: correct pitch starts at 1000ms
+        engine.processAudioInput(mockPitch(60), timestampMs = 1000L)
+        assertEquals(0, engine.getState().currentIndex)
+
+        // Drops to silence at 1010ms (10ms < 20ms)
+        engine.processAudioInput(null, timestampMs = 1010L)
+        val state = engine.getState()
+        assertEquals(0, state.currentIndex)
+        assertEquals(NoteStatus.ACTIVE, state.noteStatuses[0])
+    }
+
+    @Test
+    fun testNoteSustainedAtLeast20msAdvances() {
+        // Correct pitch starts at 1000ms
+        engine.processAudioInput(mockPitch(60), timestampMs = 1000L)
+        assertEquals(0, engine.getState().currentIndex)
+
+        // Released at 1025ms (25ms >= 20ms transient threshold)
+        engine.processAudioInput(null, timestampMs = 1025L)
+        val state = engine.getState()
+        assertEquals(1, state.currentIndex)
+    }
+
+    @Test
+    fun testIncorrectTimingYieldsWrongDuration() {
+        // Expected is 0.8s. User sustains for only 200ms then releases.
+        engine.processAudioInput(mockPitch(60), timestampMs = 1000L)
+        engine.processAudioInput(null, timestampMs = 1200L)
+
+        val state = engine.getState()
+        assertEquals(1, state.currentIndex)
+        assertEquals(NoteStatus.WRONG_DURATION, state.noteStatuses[0])
+        assertEquals(1, state.evaluations.size)
+        val evaluation = state.evaluations[0]
+        assertEquals(true, evaluation.pitchCorrect)
+        assertEquals(false, evaluation.durationCorrect)
+    }
+
+    @Test
+    fun testCorrectTimingYieldsCorrectStatus() {
+        // Expected is 0.8s. User sustains for 800ms.
+        engine.processAudioInput(mockPitch(60), timestampMs = 1000L)
+        engine.processAudioInput(mockPitch(60), timestampMs = 1800L)
+
+        val state = engine.getState()
+        assertEquals(1, state.currentIndex)
+        assertEquals(NoteStatus.CORRECT, state.noteStatuses[0])
+        assertEquals(1, state.evaluations.size)
+        val evaluation = state.evaluations[0]
+        assertEquals(true, evaluation.pitchCorrect)
+        assertEquals(true, evaluation.durationCorrect)
     }
 }

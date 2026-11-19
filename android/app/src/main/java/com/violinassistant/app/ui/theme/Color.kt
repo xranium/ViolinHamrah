@@ -2,6 +2,7 @@ package com.violinassistant.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+val BgDark = Color(0xFF0F172A)
 val BgPrimary = Color(0xFF0D1117)
 val BgCard = Color(0xFF161B22)
 val BgCardHover = Color(0xFF21262D)

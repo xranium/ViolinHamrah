@@ -13,6 +13,10 @@ class PracticeEngine(
     private val debouncer: FrequencyStackDebouncer? = null,
     private val onStateChange: ((PracticeEngineState) -> Unit)? = null
 ) {
+    companion object {
+        const val TRANSIENT_THRESHOLD_SEC = 0.020f
+    }
+
     private var currentIndex = 0
     private val noteStatuses = mutableMapOf<Int, NoteStatus>()
     private val evaluations = mutableListOf<EvaluationRecord>()
@@ -46,7 +50,7 @@ class PracticeEngine(
         notifyState(null)
     }
 
-    fun processAudioInput(pitchResult: PitchResult?) {
+    fun processAudioInput(pitchResult: PitchResult?, timestampMs: Long = System.currentTimeMillis()) {
         if (status == EngineStatus.FINISHED || status == EngineStatus.IDLE || currentIndex >= notes.size) {
             return
         }
@@ -63,15 +67,17 @@ class PracticeEngine(
         // Silence or unstable pitch
         if (pitchResult == null || !pitchResult.isStable) {
             if (notePitchStartTimestamp != null) {
-                val sustainedSec = (System.currentTimeMillis() - notePitchStartTimestamp!!) / 1000f
+                val sustainedSec = (timestampMs - notePitchStartTimestamp!!) / 1000f
                 notePitchStartTimestamp = null
 
-                val durResult = DurationEvaluator.evaluate(currentNote.expectedDurationSec, sustainedSec, tolerancePercent)
-                if (durResult.isAcceptable) {
-                    advanceCurrentNote(true, true, lastPitchCents, sustainedSec)
-                } else {
-                    advanceCurrentNote(true, false, lastPitchCents, sustainedSec)
+                if (sustainedSec < TRANSIENT_THRESHOLD_SEC) {
+                    status = EngineStatus.WAITING_FOR_NOTE
+                    notifyState(pitchResult)
+                    return
                 }
+
+                val durResult = DurationEvaluator.evaluate(currentNote.expectedDurationSec, sustainedSec, tolerancePercent)
+                advanceCurrentNote(true, durResult.isAcceptable, lastPitchCents, sustainedSec)
             }
             notifyState(pitchResult)
             return
@@ -84,11 +90,11 @@ class PracticeEngine(
         if (playedMidi == expectedMidi) {
             // Correct pitch confirmed
             if (notePitchStartTimestamp == null) {
-                notePitchStartTimestamp = System.currentTimeMillis()
+                notePitchStartTimestamp = timestampMs
                 status = EngineStatus.MEASURING_DURATION
             }
 
-            val sustainedSec = (System.currentTimeMillis() - notePitchStartTimestamp!!) / 1000f
+            val sustainedSec = (timestampMs - notePitchStartTimestamp!!) / 1000f
             val minAcceptable = (currentNote.expectedDurationSec * (1f - tolerancePercent / 100f)).coerceAtLeast(0.15f)
 
             if (sustainedSec >= minAcceptable) {

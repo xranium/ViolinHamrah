@@ -29,6 +29,11 @@ object Fa {
     const val DIFFICULTY_ADVANCED = "پیشرفته"
 
     // Practice
+    const val WRONG_NOTE_BUBBLE = "نت اشتباه!"
+    const val START = "شروع"
+    const val PAUSE = "توقف"
+    const val RESUME = "ادامه"
+    const val RESTART = "شروع مجدد"
     const val EXPECTED_NOTE = "نت مورد انتظار"
     const val DETECTED_NOTE = "نت تشخیص داده‌شده"
     const val LISTENING = "در حال گوش دادن..."
