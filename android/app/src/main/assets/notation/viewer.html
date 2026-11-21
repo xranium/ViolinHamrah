@@ -31,6 +31,31 @@
     let lastUserInteraction = 0;
     const pendingNotesToColor = {}, COOLDOWN_MS = 3000;
     let pendingCursor = null;
+    let currentScale = 0.88;
+
+    window.setScoreScale = function(scalePercent) {
+      const zoomVal = Math.max(0.4, Math.min(2.5, ((scalePercent || 100) / 100.0) * 0.88));
+      if (Math.abs(currentScale - zoomVal) < 0.01) return;
+      currentScale = zoomVal;
+      if (!osmd || isLoading) return;
+      try {
+        osmd.zoom = currentScale;
+        osmd.render();
+        cacheNoteElements();
+        if (osmd.cursor) {
+          osmd.cursor.show();
+          const target = currentCursorIndex;
+          osmd.cursor.reset();
+          currentCursorIndex = 0;
+          while (currentCursorIndex < target && !osmd.cursor.iterator.EndReached) {
+            osmd.cursor.next();
+            currentCursorIndex++;
+          }
+        }
+      } catch (e) {
+        console.error('Error scaling score:', e);
+      }
+    };
 
     function recordInteraction() { lastUserInteraction = Date.now(); }
     window.addEventListener('touchstart', recordInteraction, { passive: true });
@@ -85,7 +110,7 @@
         isLoading = true;
         window.resetNoteColors();
         osmd.load(xml).then(function() {
-          osmd.zoom = 0.88;
+          osmd.zoom = currentScale;
           osmd.render();
           if (osmd.cursor) {
             osmd.cursor.show();

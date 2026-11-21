@@ -2,12 +2,13 @@ package com.violinassistant.app.ui.screens.practice
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -39,6 +40,10 @@ fun PracticeScreen(
     onBackToLibrary: () -> Unit
 ) {
     val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("sheet_prefs", Context.MODE_PRIVATE) }
+    var scale by remember { mutableStateOf(prefs.getFloat("sheet_scale", 100f)) }
+    var measuresPerLine by remember { mutableStateOf(prefs.getInt("sheet_measures_per_line", 2)) }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted -> if (isGranted) onTogglePractice() }
@@ -115,6 +120,8 @@ fun PracticeScreen(
                     currentNoteIndex = engineState.currentIndex,
                     currentStatus = engineState.noteStatuses[engineState.currentIndex] ?: NoteStatus.PENDING,
                     noteStatuses = engineState.noteStatuses,
+                    scale = scale,
+                    measuresPerLine = measuresPerLine,
                     modifier = Modifier.fillMaxSize()
                 )
 
@@ -127,6 +134,20 @@ fun PracticeScreen(
                         .padding(top = 16.dp)
                 )
             }
+
+            // Sliders for Scale ("سایز") and Measures per line ("میزان")
+            ScoreLayoutSliders(
+                scale = scale,
+                onScaleChange = { newScale ->
+                    scale = newScale
+                    prefs.edit().putFloat("sheet_scale", newScale).apply()
+                },
+                measuresPerLine = measuresPerLine,
+                onMeasuresChange = { newMeasures ->
+                    measuresPerLine = newMeasures
+                    prefs.edit().putInt("sheet_measures_per_line", newMeasures).apply()
+                }
+            )
 
             // Compact 52dp Bottom Controls
             PracticeBottomControls(

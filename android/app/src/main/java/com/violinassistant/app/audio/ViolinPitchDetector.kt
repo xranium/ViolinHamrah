@@ -17,8 +17,8 @@ class ViolinPitchDetector(
     companion object {
         const val MIN_VIOLIN_FREQ = 185f  // Just below G3 (196 Hz)
         const val MAX_VIOLIN_FREQ = 2700f // Up to E7 (2637 Hz)
-        const val MIN_RMS_VOLUME = 0.015f // Acoustic squelch threshold for violin
-        const val CLARITY_THRESHOLD = 0.78f // McLeod confidence threshold
+        const val MIN_RMS_VOLUME = 0.005f // Relaxed acoustic squelch threshold for soft violin bowing
+        const val CLARITY_THRESHOLD = 0.65f // Relaxed McLeod confidence threshold to capture harmonics
         const val HISTORY_SIZE = 5
     }
 

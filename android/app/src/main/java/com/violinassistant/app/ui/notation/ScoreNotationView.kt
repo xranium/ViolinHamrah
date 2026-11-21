@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.viewinterop.AndroidView
 import com.violinassistant.app.model.NoteStatus
+import com.violinassistant.app.musicxml.MusicXmlLayoutAdjuster
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -25,13 +26,19 @@ fun ScoreNotationView(
     currentNoteIndex: Int,
     currentStatus: NoteStatus,
     modifier: Modifier = Modifier,
-    noteStatuses: Map<Int, NoteStatus> = emptyMap()
+    noteStatuses: Map<Int, NoteStatus> = emptyMap(),
+    scale: Float = 100f,
+    measuresPerLine: Int = 2
 ) {
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
     var isLoaded by remember { mutableStateOf(false) }
     val completedColors = remember { mutableStateMapOf<Int, String>() }
     var prevIndex by remember { mutableStateOf(0) }
     var prevStatus by remember { mutableStateOf(currentStatus) }
+
+    val formattedXml = remember(xmlContent, measuresPerLine) {
+        MusicXmlLayoutAdjuster.adjustMeasuresPerLine(xmlContent, measuresPerLine)
+    }
 
     // Musical notation must be strictly LTR
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
@@ -58,8 +65,9 @@ fun ScoreNotationView(
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 super.onPageFinished(view, url)
                                 isLoaded = true
-                                if (xmlContent.isNotBlank()) {
-                                    val escaped = xmlContent
+                                view?.evaluateJavascript("window.setScoreScale($scale);", null)
+                                if (formattedXml.isNotBlank()) {
+                                    val escaped = formattedXml
                                         .replace("\\", "\\\\")
                                         .replace("`", "\\`")
                                         .replace("$", "\\$")
@@ -73,7 +81,7 @@ fun ScoreNotationView(
                     }
                 },
                 update = { webView ->
-                    if (isLoaded && xmlContent.isNotBlank()) {
+                    if (isLoaded && formattedXml.isNotBlank()) {
                         // Permanent SVG note coloring for accepted notes
                         if (noteStatuses.isNotEmpty()) {
                             noteStatuses.forEach { (idx, status) ->
@@ -119,15 +127,22 @@ fun ScoreNotationView(
         }
     }
 
-    // When XML changes, reload score and clear cached note colors
-    LaunchedEffect(xmlContent, isLoaded) {
-        if (isLoaded && xmlContent.isNotBlank() && webViewInstance != null) {
+    // When XML or measuresPerLine changes, reload score and clear cached note colors
+    LaunchedEffect(formattedXml, isLoaded) {
+        if (isLoaded && formattedXml.isNotBlank() && webViewInstance != null) {
             completedColors.clear()
-            val escaped = xmlContent
+            val escaped = formattedXml
                 .replace("\\", "\\\\")
                 .replace("`", "\\`")
                 .replace("$", "\\$")
             webViewInstance?.evaluateJavascript("window.loadScore(`$escaped`);", null)
+        }
+    }
+
+    // When scale changes dynamically
+    LaunchedEffect(scale, isLoaded) {
+        if (isLoaded && webViewInstance != null) {
+            webViewInstance?.evaluateJavascript("window.setScoreScale($scale);", null)
         }
     }
 }
