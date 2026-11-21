@@ -135,25 +135,16 @@ fun PracticeScreen(
                 )
             }
 
-            // Sliders for Scale ("سایز") and Measures per line ("میزان")
-            ScoreLayoutSliders(
+            // Single Compact Bottom Bar (Expected note + سایز slider + Controls)
+            PracticeBottomControls(
+                expectedNote = currentNote,
+                isPracticing = isPracticing,
+                hasStarted = engineState.currentIndex > 0 || isPracticing,
                 scale = scale,
                 onScaleChange = { newScale ->
                     scale = newScale
                     prefs.edit().putFloat("sheet_scale", newScale).apply()
                 },
-                measuresPerLine = measuresPerLine,
-                onMeasuresChange = { newMeasures ->
-                    measuresPerLine = newMeasures
-                    prefs.edit().putInt("sheet_measures_per_line", newMeasures).apply()
-                }
-            )
-
-            // Compact 52dp Bottom Controls
-            PracticeBottomControls(
-                expectedNote = currentNote,
-                isPracticing = isPracticing,
-                hasStarted = engineState.currentIndex > 0 || isPracticing,
                 onTogglePractice = handleToggle,
                 onRestart = onResetPractice
             )

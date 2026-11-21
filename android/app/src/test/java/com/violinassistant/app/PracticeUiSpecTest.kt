@@ -122,17 +122,13 @@ class PracticeUiSpecTest {
         assertEquals("۰۲:۱۵", Formatters.formatDurationMMSS(135))
     }
 
-    // Sliders contract for Sheet Size (Scale) and Measures per line
+    // Scale slider range contract (70% - 180%)
     @Test
-    fun testSheetSlidersRangeContract() {
+    fun testSheetScaleSliderRangeContract() {
         val minScale = 70f
         val maxScale = 180f
-        val minMeasures = 1
-        val maxMeasures = 4
 
         assertTrue("Min scale should allow compact views", minScale >= 50f)
         assertTrue("Max scale should allow large zoom", maxScale <= 250f)
-        assertTrue("Min measures per line should be 1", minMeasures == 1)
-        assertTrue("Max measures per line should be 4", maxMeasures == 4)
     }
 }

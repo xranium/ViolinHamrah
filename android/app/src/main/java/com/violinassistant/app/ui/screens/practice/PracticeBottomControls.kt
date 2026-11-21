@@ -21,14 +21,16 @@ import com.violinassistant.app.model.NoteEvent
 import com.violinassistant.app.ui.theme.*
 
 /**
- * Compact 52dp practice bottom control bar inspired by Trala (Requirements R2 & R3).
- * Contains expected note badge (note + violin finger/string), Start/Pause/Resume, and Restart.
+ * Compact 56dp practice bottom control bar inspired by Trala.
+ * Contains expected note badge, score size (سایز) zoom slider, restart, and Start/Pause/Resume.
  */
 @Composable
 fun PracticeBottomControls(
     expectedNote: NoteEvent?,
     isPracticing: Boolean,
     hasStarted: Boolean,
+    scale: Float,
+    onScaleChange: (Float) -> Unit,
     onTogglePractice: () -> Unit,
     onRestart: () -> Unit,
     modifier: Modifier = Modifier
@@ -36,10 +38,10 @@ fun PracticeBottomControls(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .height(56.dp)
             .background(BgDark)
-            .padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Expected note indicator badge
@@ -48,7 +50,7 @@ fun PracticeBottomControls(
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color(0xFF1E293B))
-                .padding(horizontal = 10.dp, vertical = 6.dp)
+                .padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
             if (expectedNote == null) {
                 Text("—", fontSize = 13.sp, color = TextSecondary)
@@ -63,20 +65,45 @@ fun PracticeBottomControls(
                 )
                 val fingering = getViolinFingering(expectedNote.midi)
                 if (fingering.isNotEmpty()) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = fingering, fontSize = 11.sp, color = TextSecondary)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = fingering, fontSize = 10.sp, color = TextSecondary)
                 }
             }
         }
 
-        // Primary Start/Pause/Resume and secondary Restart controls
+        // سایز (Score Scale) Slider
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "سایز",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextSecondary,
+                modifier = Modifier.padding(end = 2.dp)
+            )
+            Slider(
+                value = scale,
+                onValueChange = onScaleChange,
+                valueRange = 70f..180f,
+                colors = SliderDefaults.colors(
+                    thumbColor = PrimaryBlue,
+                    activeTrackColor = PrimaryBlue,
+                    inactiveTrackColor = Color(0xFF334155)
+                ),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Controls: Restart + Start/Pause/Resume
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             IconButton(
                 onClick = onRestart,
-                modifier = Modifier.size(38.dp)
+                modifier = Modifier.size(36.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
@@ -93,20 +120,20 @@ fun PracticeBottomControls(
             }
             Button(
                 onClick = onTogglePractice,
-                modifier = Modifier.height(38.dp),
-                shape = RoundedCornerShape(19.dp),
+                modifier = Modifier.height(36.dp),
+                shape = RoundedCornerShape(18.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isPracticing) ErrorRed else AccentGreen
                 ),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp)
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
             ) {
                 Icon(
                     imageVector = if (isPracticing) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(text = buttonLabel, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(text = buttonLabel, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
