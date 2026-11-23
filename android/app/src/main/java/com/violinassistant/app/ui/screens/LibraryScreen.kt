@@ -4,15 +4,19 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.violinassistant.app.data.ScoreEntity
 import com.violinassistant.app.localization.Fa
-import com.violinassistant.app.ui.theme.*
+import com.violinassistant.app.ui.theme.AppTheme
 import java.io.InputStream
 
 @Composable
@@ -34,9 +38,11 @@ fun LibraryScreen(
     syncMessage: String?,
     onSelectScore: (ScoreEntity) -> Unit,
     onImportFile: (InputStream, String) -> Unit,
-    onSyncGitHub: () -> Unit
+    onSyncGitHub: () -> Unit,
+    onOpenThemeDialog: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val colors = AppTheme.colors
     var searchQuery by remember { mutableStateOf("") }
 
     val filePicker = rememberLauncherForActivityResult(
@@ -47,30 +53,26 @@ fun LibraryScreen(
             try {
                 context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
                     val nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                    if (cursor.moveToFirst() && nameIdx >= 0) {
-                        fileName = cursor.getString(nameIdx)
-                    }
+                    if (cursor.moveToFirst() && nameIdx >= 0) fileName = cursor.getString(nameIdx)
                 }
             } catch (_: Exception) {}
             val inputStream = context.contentResolver.openInputStream(uri)
-            if (inputStream != null) {
-                onImportFile(inputStream, fileName)
-            }
+            if (inputStream != null) onImportFile(inputStream, fileName)
         }
     }
 
     val filtered = scores.filter {
-        it.title.contains(searchQuery, ignoreCase = true) ||
-        it.composer.contains(searchQuery, ignoreCase = true)
+        it.title.contains(searchQuery, ignoreCase = true) || it.composer.contains(searchQuery, ignoreCase = true)
     }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgPrimary)
+            .background(colors.bgPrimary)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Header with Compact Action Chips
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -79,29 +81,31 @@ fun LibraryScreen(
             ) {
                 Text(
                     text = Fa.LIBRARY_TITLE,
-                    fontSize = 20.sp,
+                    fontSize = 19.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
+
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
                         onClick = { filePicker.launch(arrayOf("*/*")) },
-                        colors = ButtonDefaults.buttonColors(containerColor = BgCardHover),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        modifier = Modifier.size(36.dp).clip(CircleShape).background(colors.bgCard)
                     ) {
-                        Icon(Icons.Default.FileUpload, contentDescription = null, tint = TextPrimary)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(Fa.IMPORT_CUSTOM, fontSize = 12.sp, color = TextPrimary)
+                        Icon(Icons.Default.FileUpload, contentDescription = "فایل", tint = colors.textPrimary, modifier = Modifier.size(18.dp))
                     }
 
-                    Button(
+                    IconButton(
                         onClick = onSyncGitHub,
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        modifier = Modifier.size(36.dp).clip(CircleShape).background(colors.bgCard)
                     ) {
-                        Icon(Icons.Default.CloudDownload, contentDescription = null, tint = TextPrimary)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("همگام‌سازی", fontSize = 12.sp, color = TextPrimary)
+                        Icon(Icons.Default.CloudDownload, contentDescription = "همگام‌سازی", tint = colors.primary, modifier = Modifier.size(18.dp))
+                    }
+
+                    IconButton(
+                        onClick = onOpenThemeDialog,
+                        modifier = Modifier.size(36.dp).clip(CircleShape).background(colors.bgCard)
+                    ) {
+                        Icon(Icons.Default.Palette, contentDescription = "پوسته", tint = colors.primary, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -112,45 +116,44 @@ fun LibraryScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(BgCard)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(colors.bgCard)
+                        .border(1.dp, colors.borderColor, RoundedCornerShape(10.dp))
                         .padding(10.dp)
                 ) {
-                    Text(text = syncMessage, fontSize = 12.sp, color = TextSecondary)
+                    Text(text = syncMessage, fontSize = 12.sp, color = colors.textSecondary)
                 }
             }
         }
 
-        // Search Bar
+        // Modern Rounded Search Bar
         item {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text(Fa.SEARCH_HINT, fontSize = 13.sp, color = TextSecondary) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary) },
-                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(Fa.SEARCH_HINT, fontSize = 12.sp, color = colors.textSecondary) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(20.dp)) },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = BgCard,
-                    unfocusedContainerColor = BgCard,
-                    focusedBorderColor = PrimaryBlue,
-                    unfocusedBorderColor = BorderColor,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
+                    focusedContainerColor = colors.bgCard,
+                    unfocusedContainerColor = colors.bgCard,
+                    focusedBorderColor = colors.primary,
+                    unfocusedBorderColor = colors.borderColor,
+                    focusedTextColor = colors.textPrimary,
+                    unfocusedTextColor = colors.textPrimary
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(14.dp)
             )
         }
 
         if (filtered.isEmpty()) {
             item {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(Fa.EMPTY_LIBRARY, color = TextSecondary, fontSize = 13.sp)
+                    Text(Fa.EMPTY_LIBRARY, color = colors.textSecondary, fontSize = 13.sp)
                 }
             }
         } else {
@@ -158,36 +161,43 @@ fun LibraryScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(BgCard)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(colors.bgCard)
+                        .border(1.dp, colors.borderColor, RoundedCornerShape(14.dp))
                         .clickable { onSelectScore(score) }
-                        .padding(14.dp),
+                        .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Box(
                             modifier = Modifier
-                                .size(42.dp)
+                                .size(40.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(PrimaryBlue.copy(alpha = 0.15f)),
+                                .background(colors.primary.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.MusicNote, contentDescription = null, tint = PrimaryBlue)
+                            Icon(Icons.Default.MusicNote, contentDescription = null, tint = colors.primary, modifier = Modifier.size(20.dp))
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text(text = score.title, fontWeight = FontWeight.Bold, color = TextPrimary)
-                            Text(text = score.composer, fontSize = 12.sp, color = TextSecondary)
+                            Text(text = score.title, fontWeight = FontWeight.Bold, color = colors.textPrimary, fontSize = 14.sp)
+                            Text(text = score.composer, fontSize = 11.sp, color = colors.textSecondary)
                         }
                     }
 
-                    Button(
-                        onClick = { onSelectScore(score) },
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                        shape = RoundedCornerShape(8.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(colors.primary.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("مشاهده نت", fontWeight = FontWeight.Bold)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "مشاهده نت",
+                            tint = colors.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }

@@ -35,11 +35,13 @@ fun PracticeBottomControls(
     onRestart: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = AppTheme.colors
+
     Row(
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp)
-            .background(BgDark)
+            .background(colors.bgDark)
             .padding(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -49,24 +51,24 @@ fun PracticeBottomControls(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF1E293B))
+                .background(colors.bgCard)
                 .padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
             if (expectedNote == null) {
-                Text("—", fontSize = 13.sp, color = TextSecondary)
+                Text("—", fontSize = 13.sp, color = colors.textSecondary)
             } else if (expectedNote.isRest) {
-                Text("سکوت", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                Text("سکوت", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textSecondary)
             } else {
                 Text(
                     text = expectedNote.pitchName,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = PrimaryBlue
+                    color = colors.primary
                 )
                 val fingering = getViolinFingering(expectedNote.midi)
                 if (fingering.isNotEmpty()) {
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = fingering, fontSize = 10.sp, color = TextSecondary)
+                    Text(text = fingering, fontSize = 10.sp, color = colors.textSecondary)
                 }
             }
         }
@@ -80,7 +82,7 @@ fun PracticeBottomControls(
                 text = "سایز",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 modifier = Modifier.padding(end = 2.dp)
             )
             Slider(
@@ -88,9 +90,9 @@ fun PracticeBottomControls(
                 onValueChange = onScaleChange,
                 valueRange = 70f..180f,
                 colors = SliderDefaults.colors(
-                    thumbColor = PrimaryBlue,
-                    activeTrackColor = PrimaryBlue,
-                    inactiveTrackColor = Color(0xFF334155)
+                    thumbColor = colors.primary,
+                    activeTrackColor = colors.primary,
+                    inactiveTrackColor = colors.borderColor
                 ),
                 modifier = Modifier.weight(1f)
             )
@@ -108,7 +110,7 @@ fun PracticeBottomControls(
                 Icon(
                     imageVector = Icons.Default.Refresh,
                     contentDescription = Fa.RESTART,
-                    tint = TextSecondary,
+                    tint = colors.textSecondary,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -123,7 +125,7 @@ fun PracticeBottomControls(
                 modifier = Modifier.height(36.dp),
                 shape = RoundedCornerShape(18.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isPracticing) ErrorRed else AccentGreen
+                    containerColor = if (isPracticing) colors.error else colors.accent
                 ),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
             ) {

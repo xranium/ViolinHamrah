@@ -7,11 +7,9 @@ import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import com.violinassistant.app.localization.Fa
-import com.violinassistant.app.ui.theme.BgCard
-import com.violinassistant.app.ui.theme.BorderColor
-import com.violinassistant.app.ui.theme.PrimaryBlue
-import com.violinassistant.app.ui.theme.TextSecondary
+import com.violinassistant.app.ui.theme.AppTheme
 
 enum class Screen(val title: String, val icon: ImageVector) {
     HOME(Fa.NAV_HOME, Icons.Default.Home),
@@ -24,9 +22,11 @@ fun BottomNavBar(
     currentScreen: Screen,
     onScreenSelected: (Screen) -> Unit
 ) {
+    val colors = AppTheme.colors
+
     NavigationBar(
-        containerColor = BgCard,
-        tonalElevation = NavigationBarDefaults.Elevation
+        containerColor = colors.bgCard,
+        tonalElevation = 4.dp
     ) {
         Screen.values().forEach { screen ->
             val isSelected = currentScreen == screen
@@ -41,11 +41,11 @@ fun BottomNavBar(
                 },
                 label = { Text(screen.title) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = PrimaryBlue,
-                    selectedTextColor = PrimaryBlue,
-                    unselectedIconColor = TextSecondary,
-                    unselectedTextColor = TextSecondary,
-                    indicatorColor = BorderColor
+                    selectedIconColor = colors.primary,
+                    selectedTextColor = colors.primary,
+                    unselectedIconColor = colors.textSecondary,
+                    unselectedTextColor = colors.textSecondary,
+                    indicatorColor = colors.primary.copy(alpha = 0.15f)
                 )
             )
         }

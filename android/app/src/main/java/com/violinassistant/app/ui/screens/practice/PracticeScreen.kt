@@ -21,9 +21,7 @@ import com.violinassistant.app.practice.EngineStatus
 import com.violinassistant.app.practice.PracticeEngineState
 import com.violinassistant.app.ui.notation.ScoreNotationView
 import com.violinassistant.app.ui.screens.PracticeResultsView
-import com.violinassistant.app.ui.theme.BgDark
-import com.violinassistant.app.ui.theme.ErrorRed
-import com.violinassistant.app.ui.theme.TextSecondary
+import com.violinassistant.app.ui.theme.AppTheme
 
 /**
  * Minimal, sheet-music-dominant practice screen inspired by Trala (Requirements R1-R5).
@@ -37,9 +35,11 @@ fun PracticeScreen(
     micError: String?,
     onTogglePractice: () -> Unit,
     onResetPractice: () -> Unit,
-    onBackToLibrary: () -> Unit
+    onBackToLibrary: () -> Unit,
+    onOpenThemeDialog: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val colors = AppTheme.colors
     val prefs = remember { context.getSharedPreferences("sheet_prefs", Context.MODE_PRIVATE) }
     var scale by remember { mutableStateOf(prefs.getFloat("sheet_scale", 100f)) }
     var measuresPerLine by remember { mutableStateOf(prefs.getInt("sheet_measures_per_line", 2)) }
@@ -58,10 +58,10 @@ fun PracticeScreen(
 
     if (score == null) {
         Box(
-            modifier = Modifier.fillMaxSize().background(BgDark).padding(32.dp),
+            modifier = Modifier.fillMaxSize().background(colors.bgDark).padding(32.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text("لطفاً ابتدا یک قطعه را از کتابخانه انتخاب کنید.", color = TextSecondary)
+            Text("لطفاً ابتدا یک قطعه را از کتابخانه انتخاب کنید.", color = colors.textSecondary)
         }
         return
     }
@@ -75,22 +75,23 @@ fun PracticeScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgDark)
+            .background(colors.bgDark)
     ) {
         // Compact 44dp Top Bar
         PracticeTopBar(
             title = score.title,
-            onBack = onBackToLibrary
+            onBack = onBackToLibrary,
+            onOpenThemeDialog = onOpenThemeDialog
         )
 
         if (!micError.isNullOrBlank()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(ErrorRed.copy(alpha = 0.2f))
+                    .background(colors.error.copy(alpha = 0.2f))
                     .padding(vertical = 4.dp, horizontal = 12.dp)
             ) {
-                Text(text = micError, color = ErrorRed, fontSize = 12.sp)
+                Text(text = micError, color = colors.error, fontSize = 12.sp)
             }
         }
 
