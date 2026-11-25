@@ -146,7 +146,6 @@ class MetronomeEngine(
         var nextBeatFrame = 0L
         var goTriggered = !withCountdown
         var goFrame = Long.MAX_VALUE
-        var wasHeld = false
 
         try {
             while (running) {
@@ -166,15 +165,10 @@ class MetronomeEngine(
                 if (snapshot.isHeld != heldNow) _state.update { it.copy(isHeld = heldNow) }
 
                 if (heldNow) {
-                    wasHeld = true
                     mixActiveVoices(buf, chunkFrames, activeVoices)
                     sink.writeSamples(buf, chunkFrames)
                     writtenFrames += chunkFrames
                     continue
-                }
-                if (wasHeld) {
-                    wasHeld = false
-                    nextBeatFrame = activeFrames
                 }
 
                 for (sampleIdx in 0 until chunkFrames) {
