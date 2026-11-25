@@ -46,8 +46,6 @@ class PracticeUiSpecTest {
         assertTrue("Error bubble text must be in Persian", expectedBubbleText.contains("نت"))
         assertTrue("Error bubble text must contain اشتباه", expectedBubbleText.contains("اشتباه"))
         assertEquals("نت اشتباه!", expectedBubbleText.trim())
-        assertEquals("انگشتت رو ببر بالاتر", Fa.FINGER_MOVE_HIGHER)
-        assertEquals("انگشتت رو ببر پایین‌تر", Fa.FINGER_MOVE_LOWER)
     }
 
     // R2 & R3: Persian control strings contract

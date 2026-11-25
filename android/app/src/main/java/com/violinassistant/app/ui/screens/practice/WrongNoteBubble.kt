@@ -1,6 +1,7 @@
 package com.violinassistant.app.ui.screens.practice
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -8,9 +9,6 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -34,17 +32,24 @@ import kotlinx.coroutines.delay
 @Composable
 fun WrongNoteBubble(
     isWrong: Boolean,
-    guidanceText: String? = null,
+    bubbleColor: Color = ErrorRed,
     triggerKey: Any? = null,
     modifier: Modifier = Modifier,
     dismissDelayMs: Long = 900L
 ) {
     var isVisible by remember { mutableStateOf(false) }
+    val animatedColor by animateColorAsState(
+        targetValue = bubbleColor,
+        animationSpec = tween(durationMillis = 140),
+        label = "WrongNoteBubbleColor"
+    )
 
     LaunchedEffect(isWrong, triggerKey) {
         if (isWrong) {
             isVisible = true
             delay(dismissDelayMs)
+            isVisible = false
+        } else {
             isVisible = false
         }
     }
@@ -59,27 +64,16 @@ fun WrongNoteBubble(
             modifier = Modifier
                 .shadow(elevation = 8.dp, shape = RoundedCornerShape(20.dp))
                 .clip(RoundedCornerShape(20.dp))
-                .background(ErrorRed)
+                .background(animatedColor)
                 .padding(horizontal = 18.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = Fa.WRONG_NOTE_BUBBLE,
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                if (!guidanceText.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = guidanceText,
-                        color = Color.White.copy(alpha = 0.94f),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
+            Text(
+                text = Fa.WRONG_NOTE_BUBBLE,
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

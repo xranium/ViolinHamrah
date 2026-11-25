@@ -200,4 +200,20 @@ class PracticeEngineTest {
         assertEquals(NoteStatus.WRONG_PITCH, state.noteStatuses[0])
         assertEquals(1, state.totalWrongAttempts)
     }
+
+    @Test
+    fun testQuietNoiseDoesNotTriggerWrongNoteAndAdvanceClearsDetectedPitch() {
+        val gatedEngine = PracticeEngine(notes = notes, tolerancePercent = 45, minWrongNoteVolume = 0.03f)
+        val quietNoise = PitchResult(440f, 65, "F4", 0, 0.95f, volume = 0.01f, isStable = true)
+        gatedEngine.processAudioInput(quietNoise, timestampMs = 1000L)
+        assertEquals(0, gatedEngine.getState().totalWrongAttempts)
+        assertEquals(NoteStatus.ACTIVE, gatedEngine.getState().noteStatuses[0])
+
+        var lastNotifiedPitch: PitchResult? = mockPitch(60)
+        val advanceEngine = PracticeEngine(notes = notes, tolerancePercent = 20) { s -> lastNotifiedPitch = s.detectedPitch }
+        advanceEngine.processAudioInput(mockPitch(60), timestampMs = 1000L)
+        advanceEngine.processAudioInput(mockPitch(60), timestampMs = 1800L)
+        assertEquals(1, advanceEngine.getState().currentIndex)
+        assertEquals(null, lastNotifiedPitch)
+    }
 }

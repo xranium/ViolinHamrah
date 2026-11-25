@@ -31,8 +31,6 @@ object Fa {
 
     // Practice
     const val WRONG_NOTE_BUBBLE = "نت اشتباه!"
-    const val FINGER_MOVE_HIGHER = "انگشتت رو ببر بالاتر"
-    const val FINGER_MOVE_LOWER = "انگشتت رو ببر پایین‌تر"
     const val START = "شروع"
     const val PAUSE = "توقف"
     const val RESUME = "ادامه"

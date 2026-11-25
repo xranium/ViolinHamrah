@@ -11,6 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -18,13 +20,13 @@ import androidx.core.content.ContextCompat
 import com.violinassistant.app.audio.CountdownPhase
 import com.violinassistant.app.audio.MetronomeState
 import com.violinassistant.app.data.ScoreEntity
-import com.violinassistant.app.localization.Fa
 import com.violinassistant.app.model.NoteStatus
 import com.violinassistant.app.practice.EngineStatus
 import com.violinassistant.app.practice.PracticeEngineState
 import com.violinassistant.app.ui.notation.ScoreNotationView
 import com.violinassistant.app.ui.screens.PracticeResultsView
 import com.violinassistant.app.ui.theme.AppTheme
+import kotlin.math.abs
 
 /**
  * Minimal, sheet-music-dominant practice screen inspired by Trala (Requirements R1-R5).
@@ -108,10 +110,7 @@ fun PracticeScreen(
             metronomeState.countdownPhase == CountdownPhase.LISTENING
         )
     val isWrongPitch = isListeningActive && detected != null && currentNote != null &&
-        detected.midi > 0 && (
-            engineState.noteStatuses[engineState.currentIndex] == NoteStatus.WRONG_PITCH ||
-                (!currentNote.isRest && detected.midi != currentNote.midi)
-            )
+        detected.midi > 0 && engineState.noteStatuses[engineState.currentIndex] == NoteStatus.WRONG_PITCH
 
     Column(
         modifier = Modifier
@@ -172,21 +171,26 @@ fun PracticeScreen(
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Floating Error Bubble with directional finger guidance
-                val fingerGuidance = remember(isWrongPitch, currentNote?.id, detected?.midi, detected?.centsDeviation) {
-                    if (!isWrongPitch || currentNote == null || currentNote.isRest || detected == null) null
-                    else when {
-                        detected.midi < currentNote.midi -> Fa.FINGER_MOVE_HIGHER
-                        detected.midi > currentNote.midi -> Fa.FINGER_MOVE_LOWER
-                        detected.centsDeviation < 0 -> Fa.FINGER_MOVE_HIGHER
-                        detected.centsDeviation > 0 -> Fa.FINGER_MOVE_LOWER
-                        else -> null
+                // Floating Error Bubble colored from green (close) to red (far)
+                val wrongBubbleColor = remember(isWrongPitch, currentNote?.id, detected?.midi, detected?.centsDeviation, colors) {
+                    if (!isWrongPitch || currentNote == null || currentNote.isRest || detected == null) {
+                        colors.error
+                    } else {
+                        val semitoneDiff = abs((detected.midi - currentNote.midi) + (detected.centsDeviation / 100f))
+                        val closeness = (1f - ((semitoneDiff - 0.5f) / 5.5f)).coerceIn(0f, 1f)
+                        val midAmber = Color(0xFFD97706)
+                        val nearGreen = Color(0xFF10B981)
+                        if (closeness >= 0.5f) {
+                            lerp(midAmber, nearGreen, (closeness - 0.5f) * 2f)
+                        } else {
+                            lerp(colors.error, midAmber, closeness * 2f)
+                        }
                     }
                 }
                 WrongNoteBubble(
                     isWrong = isWrongPitch,
-                    guidanceText = fingerGuidance,
-                    triggerKey = Triple(detected?.midi, detected?.centsDeviation, fingerGuidance),
+                    bubbleColor = wrongBubbleColor,
+                    triggerKey = Triple(detected?.midi, detected?.centsDeviation, engineState.totalWrongAttempts),
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = 16.dp)

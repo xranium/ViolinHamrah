@@ -87,8 +87,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 notes = parsed.notes,
                 tolerancePercent = settings.durationTolerancePercent,
                 practiceMode = settings.practiceMode,
-                debouncer = FrequencyStackDebouncer(debounceCooldownMs = 120L, minConsecutiveFrames = 2),
+                debouncer = FrequencyStackDebouncer(debounceCooldownMs = 120L, minConsecutiveFrames = 3),
                 glitchGraceMs = 280L,
+                minWrongNoteVolume = 0.03f,
                 onStateChange = { newState ->
                     _engineState.value = newState
                     if (newState.status.name == "FINISHED" && newState.overallScore != null) {

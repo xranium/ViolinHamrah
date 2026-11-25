@@ -12,6 +12,7 @@ class PracticeEngine(
     private val practiceMode: PracticeMode = PracticeMode.GUIDED,
     private val debouncer: FrequencyStackDebouncer? = null,
     private val glitchGraceMs: Long = 0L,
+    private val minWrongNoteVolume: Float = 0f,
     private val onStateChange: ((PracticeEngineState) -> Unit)? = null
 ) {
     companion object {
@@ -87,8 +88,10 @@ class PracticeEngine(
                 notePitchStartTimestamp = null
                 lastCorrectTimestampMs = null
                 advanceCurrentNote(true, durResult.isAcceptable, pitchResult.centsDeviation, sustainedSec, timestampMs)
+                notifyState(null)
+            } else {
+                notifyState(pitchResult)
             }
-            notifyState(pitchResult)
         } else {
             val startTs = notePitchStartTimestamp
             val lastValidTs = lastCorrectTimestampMs ?: startTs
@@ -132,6 +135,10 @@ class PracticeEngine(
     }
 
     private fun recordWrongSound(pitchResult: PitchResult, timestampMs: Long) {
+        if (pitchResult.volume < minWrongNoteVolume) {
+            notifyState(null)
+            return
+        }
         notePitchStartTimestamp = null
         lastCorrectTimestampMs = null
         restSoundFrames = 0
