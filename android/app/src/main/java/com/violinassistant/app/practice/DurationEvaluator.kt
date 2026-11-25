@@ -30,18 +30,29 @@ object DurationEvaluator {
     }
 
     /**
-     * Continuous-hold auto-advance caps early lead at 0.22s so long notes (half/whole)
-     * stay aligned with the metronome beat instead of finishing multiple beats early.
+     * Continuous-hold auto-advance threshold.
+     * When [exactBeatSync] is true, advances within one 25ms frame of [expectedSec] so the cursor
+     * snaps on the exact metronome beat; otherwise caps early lead at 0.22s.
      */
-    fun minAutoAdvanceDuration(expectedSec: Float, tolerancePercent: Int = 20): Float {
-        val leadSec = (expectedSec * (tolerancePercent / 100f)).coerceAtMost(0.22f)
+    fun minAutoAdvanceDuration(
+        expectedSec: Float,
+        tolerancePercent: Int = 20,
+        exactBeatSync: Boolean = false
+    ): Float {
+        val maxLead = if (exactBeatSync) 0.025f else 0.22f
+        val leadSec = (expectedSec * (tolerancePercent / 100f)).coerceAtMost(maxLead)
         return (expectedSec - leadSec).coerceAtLeast(0.15f)
     }
 
-    /** Rest notes cap tolerance at 20% and lead at 0.22s to stay locked with the metronome. */
-    fun minRestDuration(expectedSec: Float, tolerancePercent: Int = 20): Float {
+    /** Rest notes cap tolerance at 20% and align with exact beat timing when [exactBeatSync] is enabled. */
+    fun minRestDuration(
+        expectedSec: Float,
+        tolerancePercent: Int = 20,
+        exactBeatSync: Boolean = false
+    ): Float {
         val restTolerance = tolerancePercent.coerceAtMost(20)
-        val leadSec = (expectedSec * (restTolerance / 100f)).coerceAtMost(0.22f)
+        val maxLead = if (exactBeatSync) 0.025f else 0.22f
+        val leadSec = (expectedSec * (restTolerance / 100f)).coerceAtMost(maxLead)
         return (expectedSec - leadSec).coerceAtLeast(0.15f)
     }
 }

@@ -22,6 +22,9 @@ class MetronomeEngine(
     val state: StateFlow<MetronomeState> = _state.asStateFlow()
 
     @Volatile private var running = false
+    @Volatile private var holdRequested = false
+    @Volatile private var holdGraceRemainingFrames = 0L
+    @Volatile private var currentSampleRate = 44100
     private var workerThread: Thread? = null
     private var accentPcm: ShortArray = ShortArray(0)
     private var regularPcm: ShortArray = ShortArray(0)
@@ -37,6 +40,26 @@ class MetronomeEngine(
 
     fun toggleMute() {
         _state.update { it.copy(isMuted = !it.isMuted) }
+    }
+
+    /**
+     * Pauses/resumes the metronome beat clock (Trala Conductor HOLD/RESUME model).
+     * Ignored during countdown so 3-2-1-Go always completes uninterrupted.
+     */
+    fun setHold(held: Boolean, immediate: Boolean = true) {
+        if (!held) {
+            holdRequested = false
+            holdGraceRemainingFrames = 0L
+            if (_state.value.isHeld) _state.update { it.copy(isHeld = false) }
+            return
+        }
+        if (_state.value.countdownPhase != CountdownPhase.LISTENING) return
+        if (!holdRequested) {
+            holdGraceRemainingFrames = if (immediate) 0L else (currentSampleRate * 0.16).roundToLong()
+        } else if (immediate) {
+            holdGraceRemainingFrames = 0L
+        }
+        holdRequested = true
     }
 
     fun start(
@@ -66,10 +89,14 @@ class MetronomeEngine(
         }
 
         running = true
+        holdRequested = false
+        holdGraceRemainingFrames = 0L
+        currentSampleRate = sink.sampleRate
         val initialPhase = if (withCountdown) CountdownPhase.COUNT_3 else CountdownPhase.LISTENING
         _state.update {
             it.copy(
                 isPlaying = true,
+                isHeld = false,
                 currentBeatInMeasure = 1,
                 beatPulseCount = 0L,
                 countdownPhase = initialPhase
@@ -87,6 +114,8 @@ class MetronomeEngine(
 
     fun stop(resetPhaseToIdle: Boolean = true) {
         running = false
+        holdRequested = false
+        holdGraceRemainingFrames = 0L
         val t = workerThread
         workerThread = null
         if (t != null && t !== Thread.currentThread()) {
@@ -95,6 +124,7 @@ class MetronomeEngine(
         _state.update {
             it.copy(
                 isPlaying = false,
+                isHeld = false,
                 currentBeatInMeasure = 0,
                 countdownPhase = if (resetPhaseToIdle) CountdownPhase.IDLE else it.countdownPhase
             )
@@ -111,10 +141,12 @@ class MetronomeEngine(
         val buf = ShortArray(chunkFrames)
         val activeVoices = ArrayList<ActiveVoice>(4)
         var writtenFrames = 0L
+        var activeFrames = 0L
         var beatIndex = 0L
         var nextBeatFrame = 0L
         var goTriggered = !withCountdown
         var goFrame = Long.MAX_VALUE
+        var wasHeld = false
 
         try {
             while (running) {
@@ -122,9 +154,31 @@ class MetronomeEngine(
                 val framesPerBeat = ((sr * 60.0) / snapshot.tempoBpm).roundToLong().coerceAtLeast(1000L)
                 val muted = snapshot.isMuted
                 val beatsPerMeasure = snapshot.beatsPerMeasure
+                val canHold = goTriggered && snapshot.countdownPhase == CountdownPhase.LISTENING
+
+                val heldNow = if (holdRequested && canHold) {
+                    if (holdGraceRemainingFrames > 0L) {
+                        holdGraceRemainingFrames = (holdGraceRemainingFrames - chunkFrames).coerceAtLeast(0L)
+                        false
+                    } else true
+                } else false
+
+                if (snapshot.isHeld != heldNow) _state.update { it.copy(isHeld = heldNow) }
+
+                if (heldNow) {
+                    wasHeld = true
+                    mixActiveVoices(buf, chunkFrames, activeVoices)
+                    sink.writeSamples(buf, chunkFrames)
+                    writtenFrames += chunkFrames
+                    continue
+                }
+                if (wasHeld) {
+                    wasHeld = false
+                    nextBeatFrame = activeFrames
+                }
 
                 for (sampleIdx in 0 until chunkFrames) {
-                    val globalFrame = writtenFrames + sampleIdx
+                    val globalFrame = activeFrames + sampleIdx
                     while (nextBeatFrame <= globalFrame) {
                         val phase = countdownPhaseForBeat(beatIndex, withCountdown)
                         val isAccent = if (withCountdown && beatIndex < 4L) {
@@ -145,21 +199,15 @@ class MetronomeEngine(
                             val resolved = if (goTriggered && phase == CountdownPhase.GO) CountdownPhase.LISTENING else phase
                             it.copy(currentBeatInMeasure = displayBeat, beatPulseCount = it.beatPulseCount + 1L, countdownPhase = resolved)
                         }
-                        if (!goTriggered && beatIndex == 3L) goFrame = nextBeatFrame
+                        if (!goTriggered && beatIndex == 3L) goFrame = activeFrames + sampleIdx
                         beatIndex++
                         nextBeatFrame += framesPerBeat
                     }
-
-                    var mix = 0
-                    for (v in activeVoices.size - 1 downTo 0) {
-                        val voice = activeVoices[v]
-                        mix += voice.wave[voice.pos++].toInt()
-                        if (voice.pos >= voice.wave.size) activeVoices.removeAt(v)
-                    }
-                    buf[sampleIdx] = mix.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                    buf[sampleIdx] = mixSingleSample(activeVoices)
                 }
 
                 sink.writeSamples(buf, chunkFrames)
+                activeFrames += chunkFrames
                 writtenFrames += chunkFrames
 
                 if (!goTriggered && goFrame != Long.MAX_VALUE &&
@@ -177,6 +225,20 @@ class MetronomeEngine(
         } finally {
             sink.close()
         }
+    }
+
+    private fun mixActiveVoices(buf: ShortArray, count: Int, activeVoices: ArrayList<ActiveVoice>) {
+        for (i in 0 until count) buf[i] = mixSingleSample(activeVoices)
+    }
+
+    private fun mixSingleSample(activeVoices: ArrayList<ActiveVoice>): Short {
+        var mix = 0
+        for (v in activeVoices.size - 1 downTo 0) {
+            val voice = activeVoices[v]
+            mix += voice.wave[voice.pos++].toInt()
+            if (voice.pos >= voice.wave.size) activeVoices.removeAt(v)
+        }
+        return mix.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
     }
 
     private fun countdownPhaseForBeat(beatIndex: Long, withCountdown: Boolean): CountdownPhase =

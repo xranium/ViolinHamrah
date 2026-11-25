@@ -39,10 +39,12 @@ class NotationViewerTest {
         // Requirement 5: Incremental cursor positioning
         assertTrue("must handle incremental step", content.contains("currentCursorIndex < targetIndex"))
 
-        // Requirement 6: Scale preservation & note shockwave glow
+        // Requirement 6: Scale preservation, note shockwave glow, and instant cursor snap
         assertTrue("must preserve applied note colors across scaling", content.contains("appliedNoteColors"))
         assertTrue("must trigger shock glow on played notes", content.contains("triggerNoteShock"))
         assertTrue("must support skipped shock when reapplying scale colors", content.contains("skipShock"))
+        assertTrue("cursor must snap without transition lag", content.contains("transition: none;"))
+        assertTrue("must not slide cursor over 150ms", !content.contains("0.15s ease-out"))
     }
 
     @Test

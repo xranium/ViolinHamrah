@@ -2,6 +2,7 @@ package com.violinassistant.app.practice
 
 import com.violinassistant.app.audio.MetronomeEngine
 import com.violinassistant.app.audio.MetronomeState
+import com.violinassistant.app.model.NoteStatus
 import com.violinassistant.app.tuner.SoundcorsetTunerEngine
 import com.violinassistant.app.tuner.TunerUiState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,6 +69,20 @@ class PracticeAudioCoordinator(
 
     fun toggleMetronomeMute() {
         metronomeEngine.toggleMute()
+    }
+
+    /** Synchronizes metronome HOLD/RESUME with live practice progress (Trala Conductor model). */
+    fun syncMetronomeWithEngineState(state: PracticeEngineState) {
+        if (!_isPracticing.value) return
+        when (state.status) {
+            EngineStatus.MEASURING_DURATION -> metronomeEngine.setHold(held = false)
+            EngineStatus.WAITING_FOR_NOTE -> {
+                val isWrong = state.noteStatuses[state.currentIndex] == NoteStatus.WRONG_PITCH
+                metronomeEngine.setHold(held = true, immediate = isWrong)
+            }
+            EngineStatus.FINISHED -> stopPractice()
+            else -> Unit
+        }
     }
 
     fun setTunerActive(active: Boolean, hasMicPermission: Boolean) {

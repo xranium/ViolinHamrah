@@ -13,6 +13,7 @@ class PracticeEngine(
     private val debouncer: FrequencyStackDebouncer? = null,
     private val glitchGraceMs: Long = 0L,
     private val minWrongNoteVolume: Float = 0f,
+    private val syncToBeatOnAutoAdvance: Boolean = false,
     private val onStateChange: ((PracticeEngineState) -> Unit)? = null
 ) {
     companion object {
@@ -82,7 +83,9 @@ class PracticeEngine(
             lastCorrectTimestampMs = timestampMs
 
             val sustainedSec = (timestampMs - notePitchStartTimestamp!!) / 1000f
-            val autoAdvanceMin = DurationEvaluator.minAutoAdvanceDuration(currentNote.expectedDurationSec, tolerancePercent)
+            val autoAdvanceMin = DurationEvaluator.minAutoAdvanceDuration(
+                currentNote.expectedDurationSec, tolerancePercent, syncToBeatOnAutoAdvance
+            )
             if (sustainedSec >= autoAdvanceMin) {
                 val durResult = DurationEvaluator.evaluate(currentNote.expectedDurationSec, sustainedSec, tolerancePercent)
                 notePitchStartTimestamp = null
@@ -114,7 +117,10 @@ class PracticeEngine(
                 status = EngineStatus.MEASURING_DURATION
             }
             val sustainedSilenceSec = ((timestampMs - notePitchStartTimestamp!!) / 1000f).coerceAtLeast(0f)
-            if (sustainedSilenceSec >= DurationEvaluator.minRestDuration(currentNote.expectedDurationSec, tolerancePercent)) {
+            val minRest = DurationEvaluator.minRestDuration(
+                currentNote.expectedDurationSec, tolerancePercent, syncToBeatOnAutoAdvance
+            )
+            if (sustainedSilenceSec >= minRest) {
                 advanceCurrentNote(true, true, 0, sustainedSilenceSec, timestampMs)
             }
             notifyState(pitchResult)

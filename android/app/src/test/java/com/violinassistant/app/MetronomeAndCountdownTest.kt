@@ -158,4 +158,30 @@ class MetronomeAndCountdownTest {
         assertEquals("Accent beat 0 & 4 must be bit-for-bit identical", beat0Accent, beat4Accent)
         assertNotEquals("Accent & regular click must remain distinct", beat0Accent, beat1Reg)
     }
+
+    @Test
+    fun `metronome setHold pauses beat pulses while held and resumes on release`() {
+        val sink = FakeMetronomeSink(sampleRate = 44100)
+        val engine = MetronomeEngine { sink }
+        engine.start(tempoBpm = 180f, beatsPerMeasure = 4, withCountdown = false) {}
+        val waitBeat1 = System.currentTimeMillis() + 1500L
+        while (engine.state.value.beatPulseCount < 2L && System.currentTimeMillis() < waitBeat1) Thread.sleep(2)
+        assertTrue(engine.state.value.beatPulseCount >= 2L)
+
+        engine.setHold(true, immediate = true)
+        val waitHold = System.currentTimeMillis() + 500L
+        while (!engine.state.value.isHeld && System.currentTimeMillis() < waitHold) Thread.sleep(2)
+        assertTrue(engine.state.value.isHeld)
+
+        val pulsesDuringHoldStart = engine.state.value.beatPulseCount
+        Thread.sleep(60)
+        assertEquals("Beat pulse count must freeze while held", pulsesDuringHoldStart, engine.state.value.beatPulseCount)
+
+        engine.setHold(false)
+        val waitResume = System.currentTimeMillis() + 1500L
+        while (engine.state.value.beatPulseCount <= pulsesDuringHoldStart && System.currentTimeMillis() < waitResume) Thread.sleep(2)
+        assertFalse(engine.state.value.isHeld)
+        assertTrue("Metronome must resume ticking after hold release", engine.state.value.beatPulseCount > pulsesDuringHoldStart)
+        engine.stop()
+    }
 }

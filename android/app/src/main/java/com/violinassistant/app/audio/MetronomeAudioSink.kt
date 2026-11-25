@@ -25,6 +25,7 @@ data class MetronomeState(
     val beatsPerMeasure: Int = 4,
     val isPlaying: Boolean = false,
     val isMuted: Boolean = false,
+    val isHeld: Boolean = false,
     val currentBeatInMeasure: Int = 0,
     val beatPulseCount: Long = 0L,
     val countdownPhase: CountdownPhase = CountdownPhase.IDLE

@@ -90,8 +90,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 debouncer = FrequencyStackDebouncer(debounceCooldownMs = 120L, minConsecutiveFrames = 3),
                 glitchGraceMs = 280L,
                 minWrongNoteVolume = 0.03f,
+                syncToBeatOnAutoAdvance = true,
                 onStateChange = { newState ->
                     _engineState.value = newState
+                    audioCoordinator.syncMetronomeWithEngineState(newState)
                     if (newState.status.name == "FINISHED" && newState.overallScore != null) {
                         saveSessionRecord(score, newState)
                         stopPractice()

@@ -216,4 +216,15 @@ class PracticeEngineTest {
         assertEquals(1, advanceEngine.getState().currentIndex)
         assertEquals(null, lastNotifiedPitch)
     }
+
+    @Test
+    fun testExactBeatSyncAutoAdvanceWaitsUntilExactBeat() {
+        val oneBeat = NoteEvent("b1", "A", 0, 4, 69, "A4", 1f, 1.0f, 1, 1, isRest = false)
+        val synced = PracticeEngine(listOf(oneBeat), tolerancePercent = 45, syncToBeatOnAutoAdvance = true)
+        synced.processAudioInput(mockPitch(69), timestampMs = 1000L)
+        synced.processAudioInput(mockPitch(69), timestampMs = 1950L) // 0.95s < 0.975s
+        assertEquals(0, synced.getState().currentIndex)
+        synced.processAudioInput(mockPitch(69), timestampMs = 1980L) // 0.98s >= 0.975s
+        assertEquals(1, synced.getState().currentIndex)
+    }
 }
