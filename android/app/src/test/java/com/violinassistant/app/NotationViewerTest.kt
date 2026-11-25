@@ -45,6 +45,7 @@ class NotationViewerTest {
         assertTrue("must support skipped shock when reapplying scale colors", content.contains("skipShock"))
         assertTrue("cursor must snap without transition lag", content.contains("transition: none;"))
         assertTrue("must not slide cursor over 150ms", !content.contains("0.15s ease-out"))
+        assertTrue("auto-scroll must page down via window.scrollTo", content.contains("window.scrollTo"))
     }
 
     @Test
