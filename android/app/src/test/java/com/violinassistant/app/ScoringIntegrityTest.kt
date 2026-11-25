@@ -109,7 +109,9 @@ class ScoringIntegrityTest {
             val note = parsedScore.notes[i]
             if (note.isRest) {
                 engine.processAudioInput(null, timestampMs = currentTime)
-                currentTime += 100L
+                currentTime += (note.expectedDurationSec * 1000L).toLong()
+                engine.processAudioInput(null, timestampMs = currentTime)
+                currentTime += 50L
                 continue
             }
 

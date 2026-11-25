@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.violinassistant.app.audio.AudioRecordProcessor
+import com.violinassistant.app.audio.FrequencyStackDebouncer
 import com.violinassistant.app.audio.MetronomeEngine
 import com.violinassistant.app.config.AppConfig
 import com.violinassistant.app.data.AppDatabase
@@ -86,6 +87,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 notes = parsed.notes,
                 tolerancePercent = settings.durationTolerancePercent,
                 practiceMode = settings.practiceMode,
+                debouncer = FrequencyStackDebouncer(debounceCooldownMs = 120L, minConsecutiveFrames = 2),
+                glitchGraceMs = 280L,
                 onStateChange = { newState ->
                     _engineState.value = newState
                     if (newState.status.name == "FINISHED" && newState.overallScore != null) {

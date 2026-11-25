@@ -1,5 +1,6 @@
 package com.violinassistant.app
 
+import com.violinassistant.app.audio.FrequencyStackDebouncer
 import com.violinassistant.app.model.NoteEvent
 import com.violinassistant.app.model.NoteStatus
 import com.violinassistant.app.model.PitchResult
@@ -133,5 +134,54 @@ class PracticeEngineTest {
         val evaluation = state.evaluations[0]
         assertEquals(true, evaluation.pitchCorrect)
         assertEquals(true, evaluation.durationCorrect)
+    }
+
+    @Test
+    fun testMidNoteVibrationGlitchDoesNotBreakDurationOrTriggerWrongNote() {
+        val forgivingEngine = PracticeEngine(
+            notes = notes,
+            tolerancePercent = 45,
+            debouncer = FrequencyStackDebouncer(debounceCooldownMs = 120L, minConsecutiveFrames = 2),
+            glitchGraceMs = 280L
+        )
+
+        // Start C4 (expected 0.8s; 45% tolerance -> 0.44s needed)
+        forgivingEngine.processAudioInput(mockPitch(60), timestampMs = 1000L)
+        forgivingEngine.processAudioInput(mockPitch(60), timestampMs = 1025L) // confirmed C4
+
+        // Mid-note bow vibration flickers onto wrong pitch / silence for ~180ms (< 280ms grace)
+        forgivingEngine.processAudioInput(mockPitch(61), timestampMs = 1150L)
+        forgivingEngine.processAudioInput(mockPitch(61), timestampMs = 1175L)
+        forgivingEngine.processAudioInput(null, timestampMs = 1220L)
+        assertEquals(0, forgivingEngine.getState().totalWrongAttempts)
+        assertEquals(0, forgivingEngine.getState().currentIndex)
+
+        // Recover onto C4 and reach sustained threshold
+        forgivingEngine.processAudioInput(mockPitch(60), timestampMs = 1260L)
+        forgivingEngine.processAudioInput(mockPitch(60), timestampMs = 1285L)
+        forgivingEngine.processAudioInput(mockPitch(60), timestampMs = 1480L)
+
+        val state = forgivingEngine.getState()
+        assertEquals(1, state.currentIndex)
+        assertEquals(NoteStatus.CORRECT, state.noteStatuses[0])
+        assertEquals(0, state.totalWrongAttempts)
+    }
+
+    @Test
+    fun testRealWrongPitchAfterGraceStillMarksWrongAttempt() {
+        val forgivingEngine = PracticeEngine(
+            notes = notes,
+            tolerancePercent = 45,
+            debouncer = FrequencyStackDebouncer(debounceCooldownMs = 120L, minConsecutiveFrames = 2),
+            glitchGraceMs = 280L
+        )
+        // Sustained wrong pitch D4 (62) with no prior C4 hold triggers WRONG_PITCH cleanly
+        forgivingEngine.processAudioInput(mockPitch(62), timestampMs = 2000L)
+        forgivingEngine.processAudioInput(mockPitch(62), timestampMs = 2025L)
+
+        val state = forgivingEngine.getState()
+        assertEquals(0, state.currentIndex)
+        assertEquals(NoteStatus.WRONG_PITCH, state.noteStatuses[0])
+        assertEquals(1, state.totalWrongAttempts)
     }
 }

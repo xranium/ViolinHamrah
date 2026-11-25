@@ -1,5 +1,6 @@
 package com.violinassistant.app
 
+import com.violinassistant.app.audio.FrequencyStackDebouncer
 import com.violinassistant.app.model.NoteEvent
 import com.violinassistant.app.model.NoteStatus
 import com.violinassistant.app.model.PitchResult
@@ -131,7 +132,9 @@ class PracticeEngineValidationTest {
             t += 10L
         }
 
-        // Rest note r1 advances automatically on processAudioInput
+        // Rest note r1 (expectedDurationSec = 0.5f; at 20% tolerance needs 400ms of silence)
+        engine.processAudioInput(null, timestampMs = t)
+        t += 400L
         engine.processAudioInput(null, timestampMs = t)
 
         val state = engine.getState()
@@ -139,10 +142,9 @@ class PracticeEngineValidationTest {
         assertEquals(EngineStatus.FINISHED, state.status)
     }
 
-    // Rest note auto-advance
+    // Rest note waits for silence duration and blocks if user plays
     @Test
-    fun testRestNoteAutoAdvances() {
-        // Complete notes 0, 1, 2
+    fun testRestNoteWaitsForSilenceAndRejectsPlaying() {
         var t = 1000L
         listOf(69, 71, 73).forEach { midi ->
             engine.processAudioInput(mockPitch(midi), timestampMs = t)
@@ -152,9 +154,46 @@ class PracticeEngineValidationTest {
         assertEquals(3, engine.getState().currentIndex)
         assertEquals("r1", engine.getState().currentExpectedNote?.id)
 
-        // Rest note advances automatically upon any input
+        // First silent frame starts rest timer without skipping
+        engine.processAudioInput(null, timestampMs = t)
+        assertEquals(3, engine.getState().currentIndex)
+
+        // User plays during the rest -> timer resets and cursor stays on rest
+        t += 200L
+        engine.processAudioInput(mockPitch(69), timestampMs = t)
+        assertEquals(3, engine.getState().currentIndex)
+        assertEquals(NoteStatus.WRONG_PITCH, engine.getState().noteStatuses[3])
+        assertEquals(1, engine.getState().totalWrongAttempts)
+
+        // Silence shorter than 400ms still does not pass rest
+        t += 100L
+        engine.processAudioInput(null, timestampMs = t)
+        t += 300L
+        engine.processAudioInput(null, timestampMs = t)
+        assertEquals(3, engine.getState().currentIndex)
+
+        // Reaching 400ms of silence finishes rest cleanly
+        t += 100L
         engine.processAudioInput(null, timestampMs = t)
         assertEquals(4, engine.getState().currentIndex)
+        assertEquals(NoteStatus.CORRECT, engine.getState().noteStatuses[3])
         assertEquals(EngineStatus.FINISHED, engine.getState().status)
+    }
+
+    @Test
+    fun testDebouncedRestBlocksContinuousPlayingAndIgnoresSingleClick() {
+        val restEngine = PracticeEngine(
+            notes = listOf(notes[3]), tolerancePercent = 45,
+            debouncer = FrequencyStackDebouncer(120L, 2), glitchGraceMs = 280L
+        )
+        restEngine.processAudioInput(mockPitch(69), 1000L)
+        restEngine.processAudioInput(mockPitch(70), 1025L) // 2 stable frames of varying pitch
+        assertEquals(0, restEngine.getState().currentIndex)
+        assertEquals(NoteStatus.WRONG_PITCH, restEngine.getState().noteStatuses[0])
+        restEngine.processAudioInput(null, 1200L)
+        restEngine.processAudioInput(mockPitch(69), 1400L) // single click < 2 frames
+        restEngine.processAudioInput(null, 1600L) // 400ms total silence completes 0.5s rest
+        assertEquals(1, restEngine.getState().currentIndex)
+        assertEquals(EngineStatus.FINISHED, restEngine.getState().status)
     }
 }

@@ -28,4 +28,10 @@ object DurationEvaluator {
             playedDurationSec = playedSec
         )
     }
+
+    /** Rest notes cap tolerance at 20% so generous note-hold tolerance does not skip rests too early. */
+    fun minRestDuration(expectedSec: Float, tolerancePercent: Int = 20): Float {
+        val restTolerance = tolerancePercent.coerceAtMost(20)
+        return (expectedSec * (1f - restTolerance / 100f)).coerceAtLeast(0.15f)
+    }
 }

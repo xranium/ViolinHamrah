@@ -107,7 +107,10 @@ fun PracticeScreen(
             metronomeState.countdownPhase == CountdownPhase.LISTENING
         )
     val isWrongPitch = isListeningActive && detected != null && currentNote != null &&
-        !currentNote.isRest && detected.midi > 0 && detected.midi != currentNote.midi
+        detected.midi > 0 && (
+            engineState.noteStatuses[engineState.currentIndex] == NoteStatus.WRONG_PITCH ||
+                (!currentNote.isRest && detected.midi != currentNote.midi)
+            )
 
     Column(
         modifier = Modifier

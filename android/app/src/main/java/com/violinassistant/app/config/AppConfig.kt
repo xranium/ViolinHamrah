@@ -23,9 +23,9 @@ object AppConfig {
 
     /**
      * درصد تلورانس و خطای مجاز برای کشش زمانی (دیرند) نتها:
-     * مقدار پیش‌فرض: 20 درصد
+     * مقدار پیش‌فرض: 45 درصد (سازگارتر با لرزش آرشه و نوازندگی مبتدی)
      */
-    const val DURATION_TOLERANCE_PERCENT = 20
+    const val DURATION_TOLERANCE_PERCENT = 45
 
     /**
      * حالت پیش‌فرض تمرین:
