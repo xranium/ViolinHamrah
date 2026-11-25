@@ -39,7 +39,9 @@ class ThemeTest {
             val colorScheme = theme.toColorScheme()
             assertNotNull(colorScheme)
             assertEquals(theme.primary, colorScheme.primary)
+            assertEquals(theme.onPrimary, colorScheme.onPrimary)
             assertEquals(theme.bgPrimary, colorScheme.background)
+            assertNotEquals("onPrimary must contrast with primary for ${theme.id}", theme.primary, theme.onPrimary)
         }
     }
 }

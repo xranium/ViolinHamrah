@@ -1,10 +1,11 @@
 package com.violinassistant.app.ui.navigation
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -13,10 +14,10 @@ import com.violinassistant.app.localization.Fa
 import com.violinassistant.app.ui.theme.AppTheme
 
 enum class Screen(val title: String, val icon: ImageVector) {
-    HOME(Fa.NAV_HOME, Icons.Default.Home),
-    LIBRARY(Fa.NAV_LIBRARY, Icons.Default.LibraryMusic),
-    TUNER(Fa.NAV_TUNER, Icons.Default.Tune),
-    HISTORY(Fa.NAV_HISTORY, Icons.Default.BarChart)
+    HOME(Fa.NAV_HOME, Icons.Rounded.Home),
+    LIBRARY(Fa.NAV_LIBRARY, Icons.Rounded.LibraryMusic),
+    TUNER(Fa.NAV_TUNER, Icons.Rounded.Tune),
+    HISTORY(Fa.NAV_HISTORY, Icons.Rounded.BarChart)
 }
 
 @Composable
@@ -26,30 +27,39 @@ fun BottomNavBar(
 ) {
     val colors = AppTheme.colors
 
-    NavigationBar(
-        containerColor = colors.bgCard,
-        tonalElevation = 4.dp
-    ) {
-        Screen.values().forEach { screen ->
-            val isSelected = currentScreen == screen
-            NavigationBarItem(
-                selected = isSelected,
-                onClick = { onScreenSelected(screen) },
-                icon = {
-                    Icon(
-                        imageVector = screen.icon,
-                        contentDescription = screen.title
+    Column {
+        HorizontalDivider(color = colors.borderColor.copy(alpha = 0.6f), thickness = 1.dp)
+        NavigationBar(
+            containerColor = colors.bgCard,
+            tonalElevation = 0.dp
+        ) {
+            Screen.values().forEach { screen ->
+                val isSelected = currentScreen == screen
+                NavigationBarItem(
+                    selected = isSelected,
+                    onClick = { onScreenSelected(screen) },
+                    icon = {
+                        Icon(
+                            imageVector = screen.icon,
+                            contentDescription = screen.title
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = screen.title,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1
+                        )
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = colors.primary,
+                        selectedTextColor = colors.primary,
+                        unselectedIconColor = colors.textSecondary,
+                        unselectedTextColor = colors.textSecondary,
+                        indicatorColor = colors.primary.copy(alpha = 0.14f)
                     )
-                },
-                label = { Text(screen.title) },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = colors.primary,
-                    selectedTextColor = colors.primary,
-                    unselectedIconColor = colors.textSecondary,
-                    unselectedTextColor = colors.textSecondary,
-                    indicatorColor = colors.primary.copy(alpha = 0.15f)
                 )
-            )
+            }
         }
     }
 }

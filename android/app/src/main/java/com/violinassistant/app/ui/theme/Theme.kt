@@ -26,6 +26,7 @@ fun ViolinHamrahTheme(
     ) {
         MaterialTheme(
             colorScheme = theme.toColorScheme(),
+            typography = AppTypography,
             content = content
         )
     }

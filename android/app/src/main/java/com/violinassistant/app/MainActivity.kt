@@ -41,9 +41,7 @@ class MainActivity : ComponentActivity() {
             val prefs = remember { context.getSharedPreferences("app_theme_prefs", Context.MODE_PRIVATE) }
             val savedThemeId = remember { prefs.getString("selected_theme_id", AppThemes.Midnight.id) }
             var currentTheme by remember { mutableStateOf(AppThemes.fromId(savedThemeId)) }
-            var showThemeDialog by remember {
-                mutableStateOf(!prefs.getBoolean("has_chosen_theme_v1", false))
-            }
+            var showThemeDialog by remember { mutableStateOf(false) }
 
             ViolinHamrahTheme(theme = currentTheme) {
                 var currentScreen by remember { mutableStateOf(Screen.HOME) }
@@ -135,8 +133,7 @@ class MainActivity : ComponentActivity() {
                                         },
                                         onSyncGitHub = {
                                             viewModel.syncWithGitHub()
-                                        },
-                                        onOpenThemeDialog = { showThemeDialog = true }
+                                        }
                                     )
                                 } else {
                                     PracticeScreen(
@@ -170,7 +167,7 @@ class MainActivity : ComponentActivity() {
 
                             Screen.HISTORY -> HistoryScreen(
                                 sessions = sessions,
-                                onOpenThemeDialog = { showThemeDialog = true }
+                                onBrowseLibrary = { currentScreen = Screen.LIBRARY }
                             )
                         }
                     }

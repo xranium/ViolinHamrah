@@ -4,9 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -67,8 +67,8 @@ fun PracticeBottomControls(
                 )
                 val fingering = getViolinFingering(expectedNote.midi)
                 if (fingering.isNotEmpty()) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = fingering, fontSize = 10.sp, color = colors.textSecondary)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = fingering, style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
                 }
             }
         }
@@ -80,7 +80,7 @@ fun PracticeBottomControls(
         ) {
             Text(
                 text = "سایز",
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(end = 2.dp)
@@ -101,14 +101,14 @@ fun PracticeBottomControls(
         // Controls: Restart + Start/Pause/Resume
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             IconButton(
                 onClick = onRestart,
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(48.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
+                    imageVector = Icons.Rounded.Refresh,
                     contentDescription = Fa.RESTART,
                     tint = colors.textSecondary,
                     modifier = Modifier.size(20.dp)
@@ -122,20 +122,21 @@ fun PracticeBottomControls(
             }
             Button(
                 onClick = onTogglePractice,
-                modifier = Modifier.height(36.dp),
-                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.height(42.dp),
+                shape = RoundedCornerShape(21.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isPracticing) colors.error else colors.accent
+                    containerColor = if (isPracticing) colors.error else colors.accent,
+                    contentColor = if (isPracticing) Color.White else colors.onPrimary
                 ),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp)
             ) {
                 Icon(
-                    imageVector = if (isPracticing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    imageVector = if (isPracticing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(text = buttonLabel, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(text = buttonLabel, style = MaterialTheme.typography.labelLarge)
             }
         }
     }
