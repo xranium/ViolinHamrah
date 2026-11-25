@@ -76,6 +76,9 @@ class PracticeEngine(
 
         lastPitchCents = pitchResult.centsDeviation
         if (filteredMidi == currentNote.midi) {
+            if (noteStatuses[currentIndex] == NoteStatus.WRONG_PITCH) {
+                noteStatuses[currentIndex] = NoteStatus.ACTIVE
+            }
             if (notePitchStartTimestamp == null) {
                 notePitchStartTimestamp = timestampMs
                 status = EngineStatus.MEASURING_DURATION

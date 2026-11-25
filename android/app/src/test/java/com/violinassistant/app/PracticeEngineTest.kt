@@ -227,4 +227,12 @@ class PracticeEngineTest {
         synced.processAudioInput(mockPitch(69), timestampMs = 1980L) // 0.98s >= 0.975s
         assertEquals(1, synced.getState().currentIndex)
     }
+
+    @Test
+    fun testCorrectNoteClearsWrongPitchStatusImmediately() {
+        engine.processAudioInput(mockPitch(62), timestampMs = 1000L) // wrong
+        assertEquals(NoteStatus.WRONG_PITCH, engine.getState().noteStatuses[0])
+        engine.processAudioInput(mockPitch(60), timestampMs = 1100L) // good enough
+        assertEquals(NoteStatus.ACTIVE, engine.getState().noteStatuses[0])
+    }
 }

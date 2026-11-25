@@ -46,6 +46,7 @@ class NotationViewerTest {
         assertTrue("cursor must snap without transition lag", content.contains("transition: none;"))
         assertTrue("must not slide cursor over 150ms", !content.contains("0.15s ease-out"))
         assertTrue("auto-scroll must page down via window.scrollTo", content.contains("window.scrollTo"))
+        assertTrue("body must not lock height to 100% blocking window scroll", content.contains("height: auto"))
     }
 
     @Test
