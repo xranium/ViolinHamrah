@@ -36,24 +36,10 @@ object MusicXmlParser {
             ?: overrideMeta?.composer ?: "ناشناس"
 
         var divisions = 1
-        var tempo = 80f
+        var tempo = extractTempo(doc)
         var timeBeats = 4
         var timeBeatType = 4
         var keyFifths = 0
-
-        // Global tempo check
-        val soundNodes = doc.getElementsByTagName("sound")
-        for (i in 0 until soundNodes.length) {
-            val elem = soundNodes.item(i) as? Element
-            val tempoAttr = elem?.getAttribute("tempo")
-            if (!tempoAttr.isNullOrBlank()) {
-                val t = tempoAttr.toFloatOrNull()
-                if (t != null && t in 20f..300f) {
-                    tempo = t
-                    break
-                }
-            }
-        }
 
         val measureNodes = doc.getElementsByTagName("measure")
         val notes = mutableListOf<NoteEvent>()
@@ -159,6 +145,21 @@ object MusicXmlParser {
             notes = notes,
             xmlContent = cleanXml
         )
+    }
+
+    private fun extractTempo(doc: org.w3c.dom.Document): Float {
+        val soundNodes = doc.getElementsByTagName("sound")
+        for (i in 0 until soundNodes.length) {
+            val elem = soundNodes.item(i) as? Element
+            val t = elem?.getAttribute("tempo")?.trim()?.toFloatOrNull()
+            if (t != null && t in 20f..300f) return t
+        }
+        val perMinNodes = doc.getElementsByTagName("per-minute")
+        for (i in 0 until perMinNodes.length) {
+            val t = perMinNodes.item(i)?.textContent?.trim()?.toFloatOrNull()
+            if (t != null && t in 20f..300f) return t
+        }
+        return 80f
     }
 
     private fun hasMatchingAttr(elem: Element, tag: String, attrName: String, attrVal: String): Boolean {

@@ -4,22 +4,21 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.violinassistant.app.audio.AudioRecordProcessor
+import com.violinassistant.app.audio.MetronomeEngine
 import com.violinassistant.app.config.AppConfig
 import com.violinassistant.app.data.AppDatabase
 import com.violinassistant.app.data.GitHubSyncService
 import com.violinassistant.app.data.PracticeSessionEntity
 import com.violinassistant.app.data.ScoreEntity
 import com.violinassistant.app.model.*
-import com.violinassistant.app.musicxml.MxlReader
 import com.violinassistant.app.musicxml.MusicXmlParser
+import com.violinassistant.app.practice.PracticeAudioCoordinator
 import com.violinassistant.app.practice.PracticeEngine
 import com.violinassistant.app.practice.PracticeEngineState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.io.InputStream
-import java.text.SimpleDateFormat
-import java.util.*
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val database = AppDatabase.getDatabase(application)
@@ -45,9 +44,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _engineState = MutableStateFlow(PracticeEngineState())
     val engineState: StateFlow<PracticeEngineState> = _engineState.asStateFlow()
 
-    private val _isPracticing = MutableStateFlow(false)
-    val isPracticing: StateFlow<Boolean> = _isPracticing.asStateFlow()
-
     private val _syncMessage = MutableStateFlow<String?>(null)
     val syncMessage: StateFlow<String?> = _syncMessage.asStateFlow()
 
@@ -56,13 +52,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var practiceEngine: PracticeEngine? = null
 
+    private val audioCoordinator = PracticeAudioCoordinator(
+        metronomeEngine = MetronomeEngine(appContext = application),
+        postToMain = { block -> viewModelScope.launch(Dispatchers.Main.immediate) { block() } },
+        onStartListening = {
+            _micError.value = null
+            audioProcessor.updateTuningRef(settings.tuningRefHz)
+            audioProcessor.start { pitchResult ->
+                practiceEngine?.processAudioInput(pitchResult)
+            }
+        },
+        onStopListening = { audioProcessor.stop() },
+        onError = { msg -> _micError.value = msg }
+    )
+
+    val isPracticing: StateFlow<Boolean> = audioCoordinator.isPracticing
+    val metronomeState = audioCoordinator.metronomeState
+    val tunerState = audioCoordinator.tunerState
+
     init {
         viewModelScope.launch {
             syncService.seedBuiltInScoresIfEmpty()
         }
     }
 
-    fun selectScore(score: ScoreEntity) {
+    fun selectScore(score: ScoreEntity, hasMicPermission: Boolean = false) {
+        audioCoordinator.stopPractice()
         _selectedScore.value = score
         try {
             val parsed = MusicXmlParser.parse(score.xmlContent)
@@ -81,91 +96,70 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
             practiceEngine = engine
             _engineState.value = engine.getState()
+            if (hasMicPermission) {
+                audioCoordinator.startPracticeWithCountdown(parsed.tempo, parsed.timeSignature.beats)
+            } else {
+                audioCoordinator.configureMetronome(parsed.tempo, parsed.timeSignature.beats)
+            }
         } catch (e: Exception) {
             _micError.value = "خطا در پردازش نت: ${e.message}"
         }
     }
 
     fun togglePractice() {
-        if (_isPracticing.value) {
-            stopPractice()
-        } else {
-            startPractice()
+        val parsed = _parsedScore.value
+        val tempo = parsed?.tempo ?: 80f
+        val beats = parsed?.timeSignature?.beats ?: 4
+        if (!isPracticing.value && _engineState.value.status.name == "FINISHED") {
+            practiceEngine?.reset()
+            _engineState.value = practiceEngine?.getState() ?: PracticeEngineState()
         }
+        audioCoordinator.togglePractice(tempo, beats)
     }
 
-    private fun startPractice() {
-        _micError.value = null
-        try {
-            audioProcessor.updateTuningRef(settings.tuningRefHz)
-            audioProcessor.start { pitchResult ->
-                practiceEngine?.processAudioInput(pitchResult)
-            }
-            _isPracticing.value = true
-        } catch (e: Exception) {
-            _micError.value = e.message ?: "خطا در فعال‌سازی میکروفون"
-            _isPracticing.value = false
-        }
+    fun startPracticeAfterPermission() {
+        if (isPracticing.value) return
+        val parsed = _parsedScore.value ?: return
+        audioCoordinator.startPracticeWithCountdown(parsed.tempo, parsed.timeSignature.beats)
+    }
+
+    fun toggleMetronomeMute() {
+        audioCoordinator.toggleMetronomeMute()
     }
 
     fun stopPractice() {
-        audioProcessor.stop()
-        _isPracticing.value = false
+        audioCoordinator.stopPractice()
     }
 
-    fun resetPractice() {
+    fun resetPractice(startCountdownAfterReset: Boolean = true) {
+        audioCoordinator.stopPractice()
         practiceEngine?.reset()
         _engineState.value = practiceEngine?.getState() ?: PracticeEngineState()
+        if (startCountdownAfterReset) {
+            _parsedScore.value?.let { parsed ->
+                audioCoordinator.startPracticeWithCountdown(parsed.tempo, parsed.timeSignature.beats)
+            }
+        }
+    }
+
+    fun setTunerActive(active: Boolean, hasMicPermission: Boolean) {
+        audioCoordinator.setTunerActive(active, hasMicPermission)
+    }
+
+    fun updateTunerSettings(a4Hz: Float, useFlat: Boolean, useSolfege: Boolean) {
+        audioCoordinator.updateTunerSettings(a4Hz, useFlat, useSolfege)
     }
 
     private fun saveSessionRecord(score: ScoreEntity, state: PracticeEngineState) {
         viewModelScope.launch(Dispatchers.IO) {
-            val isoDate = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(Date())
-            val entity = PracticeSessionEntity(
-                id = "sess-${System.currentTimeMillis()}",
-                scoreId = score.id,
-                scoreTitle = score.title,
-                date = isoDate,
-                durationSec = state.sessionDurationSec,
-                score = state.overallScore ?: 0,
-                completedNotes = state.evaluations.size,
-                totalNotes = state.totalNotes
-            )
-            sessionDao.insertSession(entity)
+            ScoreRepositoryHelper.saveSession(sessionDao, score, state)
         }
     }
 
     fun importCustomScore(inputStream: InputStream, fileName: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val bytes = inputStream.readBytes()
-                val isZip = bytes.size >= 4 &&
-                    bytes[0] == 0x50.toByte() &&
-                    bytes[1] == 0x4B.toByte()
-
-                val xml = if (fileName.endsWith(".mxl", ignoreCase = true) || isZip) {
-                    MxlReader.extractXml(bytes.inputStream())
-                } else {
-                    String(bytes, Charsets.UTF_8)
-                }
-
-                val title = fileName.substringBeforeLast('.')
-                val parsed = MusicXmlParser.parse(xml)
-
-                val entity = ScoreEntity(
-                    id = "custom-${System.currentTimeMillis()}",
-                    title = if (parsed.metadata.title != "قطعه بدون عنوان") parsed.metadata.title else title,
-                    composer = parsed.metadata.composer,
-                    difficulty = parsed.metadata.difficulty.name,
-                    category = "EXERCISES",
-                    description = "فایل وارد شده توسط کاربر",
-                    version = 1,
-                    xmlContent = xml,
-                    isOffline = true
-                )
-
-                scoreDao.insertOrUpdate(entity)
-                _syncMessage.value = "قطعه «${entity.title}» با موفقیت افزوده شد."
+                _syncMessage.value = ScoreRepositoryHelper.importScore(scoreDao, inputStream, fileName)
             } catch (e: Exception) {
                 _syncMessage.value = "خطا در وارد کردن فایل: ${e.message}"
             }
@@ -182,6 +176,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        audioProcessor.stop()
+        audioCoordinator.releaseAll()
     }
 }

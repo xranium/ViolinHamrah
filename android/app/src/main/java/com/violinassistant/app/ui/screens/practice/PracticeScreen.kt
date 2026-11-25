@@ -15,6 +15,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.violinassistant.app.audio.CountdownPhase
+import com.violinassistant.app.audio.MetronomeState
 import com.violinassistant.app.data.ScoreEntity
 import com.violinassistant.app.model.NoteStatus
 import com.violinassistant.app.practice.EngineStatus
@@ -32,9 +34,12 @@ fun PracticeScreen(
     score: ScoreEntity?,
     engineState: PracticeEngineState,
     isPracticing: Boolean,
+    metronomeState: MetronomeState = MetronomeState(),
     micError: String?,
     onTogglePractice: () -> Unit,
     onResetPractice: () -> Unit,
+    onToggleMetronomeMute: () -> Unit = {},
+    onStartAfterPermission: () -> Unit = {},
     onBackToLibrary: () -> Unit,
     onOpenThemeDialog: () -> Unit = {}
 ) {
@@ -43,18 +48,46 @@ fun PracticeScreen(
     val prefs = remember { context.getSharedPreferences("sheet_prefs", Context.MODE_PRIVATE) }
     var scale by remember { mutableStateOf(prefs.getFloat("sheet_scale", 100f)) }
     var measuresPerLine by remember { mutableStateOf(prefs.getInt("sheet_measures_per_line", 2)) }
+    var pendingAutoStart by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted -> if (isGranted) onTogglePractice() }
-
-    val handleToggle = {
-        val hasMic = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED
-        if (hasMic) onTogglePractice()
-        else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+    ) { isGranted ->
+        if (isGranted) {
+            if (pendingAutoStart) {
+                pendingAutoStart = false
+                onStartAfterPermission()
+            } else {
+                onTogglePractice()
+            }
+        } else {
+            pendingAutoStart = false
+        }
     }
+
+    fun hasMicPermission(): Boolean =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+
+    val runWithMic = { autoStartAfterGrant: Boolean, action: () -> Unit ->
+        if (hasMicPermission()) {
+            pendingAutoStart = false
+            action()
+        } else {
+            pendingAutoStart = autoStartAfterGrant
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    LaunchedEffect(score?.id) {
+        if (score != null && !isPracticing && !hasMicPermission()) {
+            pendingAutoStart = true
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    val handleToggle = { runWithMic(false, onTogglePractice) }
+    val handleRestart = { runWithMic(true, onResetPractice) }
 
     if (score == null) {
         Box(
@@ -69,7 +102,11 @@ fun PracticeScreen(
     val isFinished = engineState.status == EngineStatus.FINISHED && engineState.overallScore != null
     val currentNote = engineState.currentExpectedNote
     val detected = engineState.detectedPitch
-    val isWrongPitch = isPracticing && detected != null && currentNote != null &&
+    val isListeningActive = isPracticing && (
+        metronomeState.countdownPhase == CountdownPhase.GO ||
+            metronomeState.countdownPhase == CountdownPhase.LISTENING
+        )
+    val isWrongPitch = isListeningActive && detected != null && currentNote != null &&
         !currentNote.isRest && detected.midi > 0 && detected.midi != currentNote.midi
 
     Column(
@@ -77,10 +114,15 @@ fun PracticeScreen(
             .fillMaxSize()
             .background(colors.bgDark)
     ) {
-        // Compact 44dp Top Bar
+        // Compact 44dp Top Bar with metronome chip
         PracticeTopBar(
             title = score.title,
             onBack = onBackToLibrary,
+            tempoBpm = metronomeState.tempoBpm,
+            isMetronomePlaying = metronomeState.isPlaying,
+            isMetronomeMuted = metronomeState.isMuted,
+            beatPulseCount = metronomeState.beatPulseCount,
+            onToggleMetronomeMute = onToggleMetronomeMute,
             onOpenThemeDialog = onOpenThemeDialog
         )
 
@@ -134,6 +176,14 @@ fun PracticeScreen(
                         .align(Alignment.TopCenter)
                         .padding(top = 16.dp)
                 )
+
+                // Tempo-synced 3 -> 2 -> 1 -> Go Preparation Countdown Overlay
+                CountdownOverlay(
+                    phase = metronomeState.countdownPhase,
+                    beatPulseCount = metronomeState.beatPulseCount,
+                    tempoBpm = metronomeState.tempoBpm,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
 
             // Single Compact Bottom Bar (Expected note + سایز slider + Controls)
@@ -147,7 +197,7 @@ fun PracticeScreen(
                     prefs.edit().putFloat("sheet_scale", newScale).apply()
                 },
                 onTogglePractice = handleToggle,
-                onRestart = onResetPractice
+                onRestart = handleRestart
             )
         }
     }

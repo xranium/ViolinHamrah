@@ -7,6 +7,7 @@ object Fa {
     // Navigation
     const val NAV_HOME = "صفحه اصلی"
     const val NAV_LIBRARY = "کتابخانه نتها"
+    const val NAV_TUNER = "کوک ساز"
     const val NAV_PRACTICE = "تمرین"
     const val NAV_HISTORY = "تاریخچه تمرین"
     const val NAV_SETTINGS = "تنظیمات"
@@ -38,6 +39,9 @@ object Fa {
     const val DETECTED_NOTE = "نت تشخیص داده‌شده"
     const val LISTENING = "در حال گوش دادن..."
     const val STOP_PRACTICE = "توقف تمرین"
+    const val COUNTDOWN_READY = "آماده شوید..."
+    const val COUNTDOWN_GO = "برو!"
+    const val METRONOME_LABEL = "مترونوم"
     const val RETRY = "تلاش دوباره"
     const val MEASURE = "میزان"
     const val PROGRESS = "پیشرفت"

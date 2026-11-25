@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -14,6 +15,7 @@ import com.violinassistant.app.ui.theme.AppTheme
 enum class Screen(val title: String, val icon: ImageVector) {
     HOME(Fa.NAV_HOME, Icons.Default.Home),
     LIBRARY(Fa.NAV_LIBRARY, Icons.Default.LibraryMusic),
+    TUNER(Fa.NAV_TUNER, Icons.Default.Tune),
     HISTORY(Fa.NAV_HISTORY, Icons.Default.BarChart)
 }
 

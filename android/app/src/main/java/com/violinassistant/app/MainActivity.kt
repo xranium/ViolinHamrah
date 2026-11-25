@@ -1,6 +1,8 @@
 package com.violinassistant.app
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -13,11 +15,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.violinassistant.app.data.ScoreEntity
 import com.violinassistant.app.ui.navigation.BottomNavBar
 import com.violinassistant.app.ui.navigation.Screen
 import com.violinassistant.app.ui.screens.*
 import com.violinassistant.app.ui.screens.practice.PracticeScreen
+import com.violinassistant.app.ui.screens.tuner.TunerScreen
 import com.violinassistant.app.ui.theme.AppThemes
 import com.violinassistant.app.ui.theme.ThemeSelectionDialog
 import com.violinassistant.app.ui.theme.ViolinHamrahTheme
@@ -41,6 +48,23 @@ class MainActivity : ComponentActivity() {
             ViolinHamrahTheme(theme = currentTheme) {
                 var currentScreen by remember { mutableStateOf(Screen.HOME) }
                 var viewingScore by remember { mutableStateOf<ScoreEntity?>(null) }
+                val lifecycleOwner = LocalLifecycleOwner.current
+                val hasMicPermission = {
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.RECORD_AUDIO
+                    ) == PackageManager.PERMISSION_GRANTED
+                }
+
+                DisposableEffect(lifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_STOP) {
+                            viewModel.stopPractice()
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
 
                 BackHandler(enabled = viewingScore != null) {
                     viewModel.stopPractice()
@@ -51,6 +75,8 @@ class MainActivity : ComponentActivity() {
                 val sessions by viewModel.sessions.collectAsState()
                 val engineState by viewModel.engineState.collectAsState()
                 val isPracticing by viewModel.isPracticing.collectAsState()
+                val metronomeState by viewModel.metronomeState.collectAsState()
+                val tunerState by viewModel.tunerState.collectAsState()
                 val syncMessage by viewModel.syncMessage.collectAsState()
                 val micError by viewModel.micError.collectAsState()
 
@@ -82,13 +108,13 @@ class MainActivity : ComponentActivity() {
                                 onStartPractice = {
                                     val target = viewingScore ?: scores.firstOrNull()
                                     if (target != null) {
-                                        viewModel.selectScore(target)
+                                        viewModel.selectScore(target, hasMicPermission())
                                         viewingScore = target
                                         currentScreen = Screen.LIBRARY
                                     }
                                 },
                                 onSelectScore = { score ->
-                                    viewModel.selectScore(score)
+                                    viewModel.selectScore(score, hasMicPermission())
                                     viewingScore = score
                                     currentScreen = Screen.LIBRARY
                                 },
@@ -101,7 +127,7 @@ class MainActivity : ComponentActivity() {
                                         scores = scores,
                                         syncMessage = syncMessage,
                                         onSelectScore = { score ->
-                                            viewModel.selectScore(score)
+                                            viewModel.selectScore(score, hasMicPermission())
                                             viewingScore = score
                                         },
                                         onImportFile = { stream, name ->
@@ -117,9 +143,12 @@ class MainActivity : ComponentActivity() {
                                         score = viewingScore,
                                         engineState = engineState,
                                         isPracticing = isPracticing,
+                                        metronomeState = metronomeState,
                                         micError = micError,
                                         onTogglePractice = { viewModel.togglePractice() },
                                         onResetPractice = { viewModel.resetPractice() },
+                                        onToggleMetronomeMute = { viewModel.toggleMetronomeMute() },
+                                        onStartAfterPermission = { viewModel.startPracticeAfterPermission() },
                                         onBackToLibrary = {
                                             viewModel.stopPractice()
                                             viewingScore = null
@@ -128,6 +157,16 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+
+                            Screen.TUNER -> TunerScreen(
+                                state = tunerState,
+                                onSetTunerActive = { active, micOk ->
+                                    viewModel.setTunerActive(active, micOk)
+                                },
+                                onUpdateSettings = { a4, flat, solfege ->
+                                    viewModel.updateTunerSettings(a4, flat, solfege)
+                                }
+                            )
 
                             Screen.HISTORY -> HistoryScreen(
                                 sessions = sessions,
