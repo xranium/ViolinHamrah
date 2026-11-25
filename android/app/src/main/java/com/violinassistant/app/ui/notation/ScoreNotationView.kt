@@ -82,6 +82,10 @@ fun ScoreNotationView(
                 },
                 update = { webView ->
                     if (isLoaded && formattedXml.isNotBlank()) {
+                        if (currentNoteIndex == 0 && prevIndex > 0) {
+                            completedColors.clear()
+                            webView.evaluateJavascript("window.resetNoteColors();", null)
+                        }
                         // Permanent SVG note coloring for accepted notes
                         if (noteStatuses.isNotEmpty()) {
                             noteStatuses.forEach { (idx, status) ->
@@ -103,9 +107,6 @@ fun ScoreNotationView(
                                     webView.evaluateJavascript("window.setNoteColor($idx, '$color');", null)
                                 }
                             }
-                        } else if (currentNoteIndex == 0 && prevIndex > 0) {
-                            completedColors.clear()
-                            webView.evaluateJavascript("window.resetNoteColors();", null)
                         }
                         prevIndex = currentNoteIndex
                         prevStatus = currentStatus

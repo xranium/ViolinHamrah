@@ -156,15 +156,31 @@ class PracticeEngineTest {
         assertEquals(0, forgivingEngine.getState().totalWrongAttempts)
         assertEquals(0, forgivingEngine.getState().currentIndex)
 
-        // Recover onto C4 and reach sustained threshold
+        // Recover onto C4 and reach sustained threshold (0.8s - 0.22s cap = 0.58s)
         forgivingEngine.processAudioInput(mockPitch(60), timestampMs = 1260L)
         forgivingEngine.processAudioInput(mockPitch(60), timestampMs = 1285L)
-        forgivingEngine.processAudioInput(mockPitch(60), timestampMs = 1480L)
+        forgivingEngine.processAudioInput(mockPitch(60), timestampMs = 1610L)
 
         val state = forgivingEngine.getState()
         assertEquals(1, state.currentIndex)
         assertEquals(NoteStatus.CORRECT, state.noteStatuses[0])
         assertEquals(0, state.totalWrongAttempts)
+    }
+
+    @Test
+    fun testLongNoteDoesNotAdvanceMultipleBeatsEarly() {
+        val wholeNote = NoteEvent(
+            id = "w1", step = "A", alter = 0, octave = 4, midi = 69,
+            pitchName = "A4", durationInBeats = 4f, expectedDurationSec = 3.69f,
+            measure = 1, voice = 1, isRest = false
+        )
+        val wholeEngine = PracticeEngine(listOf(wholeNote), tolerancePercent = 45)
+        wholeEngine.processAudioInput(mockPitch(69), timestampMs = 1000L)
+        wholeEngine.processAudioInput(mockPitch(69), timestampMs = 3100L) // 2.10s (57%): must still hold
+        assertEquals(0, wholeEngine.getState().currentIndex)
+        wholeEngine.processAudioInput(mockPitch(69), timestampMs = 4480L) // 3.48s >= 3.47s
+        assertEquals(1, wholeEngine.getState().currentIndex)
+        assertEquals(NoteStatus.CORRECT, wholeEngine.getState().noteStatuses[0])
     }
 
     @Test

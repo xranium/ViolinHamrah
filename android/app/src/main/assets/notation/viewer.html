@@ -12,6 +12,7 @@
       -webkit-font-smoothing: antialiased; font-family: sans-serif;
     }
     #osmdContainer {
+      position: relative;
       width: 100%; min-height: 100%; padding: 8px 6px 12px 6px;
       direction: ltr !important; background: #faf9f5;
     }
@@ -22,14 +23,35 @@
       opacity: 0.85 !important;
       box-shadow: 0 0 6px rgba(37, 99, 235, 0.4);
     }
+    .note-shock-glow, .note-shock-ring {
+      position: absolute; pointer-events: none; border-radius: 50%;
+      transform: translate(-50%, -50%) scale(0.45);
+      z-index: 20;
+    }
+    .note-shock-glow {
+      width: 46px; height: 46px;
+      animation: note-shock-glow 560ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .note-shock-ring {
+      width: 34px; height: 34px; border: 2.5px solid #10b981;
+      animation: note-shock-ring 560ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes note-shock-glow {
+      0% { opacity: 0.92; transform: translate(-50%, -50%) scale(0.45); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(2.4); }
+    }
+    @keyframes note-shock-ring {
+      0% { opacity: 0.95; transform: translate(-50%, -50%) scale(0.5); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(2.8); }
+    }
   </style>
 </head>
 <body>
   <div id="osmdContainer"></div>
   <script>
     let osmd = null, isReady = false, isLoading = false, noteSvgs = [], currentCursorIndex = 0;
-    let lastUserInteraction = 0;
-    const pendingNotesToColor = {}, COOLDOWN_MS = 3000;
+    let lastUserInteraction = 0, currentCursorColor = '#2563eb';
+    const pendingNotesToColor = {}, appliedNoteColors = {}, COOLDOWN_MS = 3000;
     let pendingCursor = null;
     let currentScale = 0.88;
 
@@ -38,20 +60,20 @@
       if (Math.abs(currentScale - zoomVal) < 0.01) return;
       currentScale = zoomVal;
       if (!osmd || isLoading) return;
+      const savedCursorIndex = pendingCursor ? pendingCursor.index : currentCursorIndex;
+      const savedCursorColor = pendingCursor ? pendingCursor.colorHex : currentCursorColor;
       try {
         osmd.zoom = currentScale;
         osmd.render();
-        cacheNoteElements();
         if (osmd.cursor) {
           osmd.cursor.show();
-          const target = currentCursorIndex;
-          osmd.cursor.reset();
-          currentCursorIndex = 0;
-          while (currentCursorIndex < target && !osmd.cursor.iterator.EndReached) {
-            osmd.cursor.next();
-            currentCursorIndex++;
-          }
+          if (osmd.cursor.cursorElement) osmd.cursor.cursorElement.classList.add('osmd-cursor');
         }
+        cacheNoteElements();
+        for (const idx in appliedNoteColors) {
+          window.setNoteColor(parseInt(idx, 10), appliedNoteColors[idx], true);
+        }
+        window.setCursor(savedCursorIndex, savedCursorColor);
       } catch (e) {
         console.error('Error scaling score:', e);
       }
@@ -133,7 +155,48 @@
       } catch (e) { isLoading = false; console.error('Exception loading score:', e); }
     };
 
-    window.setNoteColor = function(index, colorHex) {
+    function triggerNoteShock(el, colorHex) {
+      const container = document.getElementById('osmdContainer');
+      if (!container || !el || typeof el.getBoundingClientRect !== 'function') return;
+      const headEl = el.querySelector('.vf-notehead') || el;
+      let nRect = headEl.getBoundingClientRect();
+      if (!nRect || (nRect.width === 0 && nRect.height === 0)) nRect = el.getBoundingClientRect();
+      if (!nRect || (nRect.width === 0 && nRect.height === 0)) return;
+      const cRect = container.getBoundingClientRect();
+      const cx = (nRect.left - cRect.left) + (nRect.width / 2);
+      const cy = (nRect.top - cRect.top) + (nRect.height / 2);
+      const isAmber = (colorHex || '').toLowerCase() === '#f59e0b';
+      const ringColor = isAmber ? '#facc15' : '#10b981';
+      const glowGradient = isAmber
+        ? 'radial-gradient(circle, rgba(250,204,21,0.78) 0%, rgba(245,158,11,0.34) 48%, rgba(245,158,11,0) 72%)'
+        : 'radial-gradient(circle, rgba(52,211,153,0.78) 0%, rgba(16,185,129,0.34) 48%, rgba(16,185,129,0) 72%)';
+
+      el.style.filter = 'drop-shadow(0 0 7px ' + ringColor + ')';
+      setTimeout(function() { if (el && el.style) el.style.filter = ''; }, 560);
+
+      const glow = document.createElement('div');
+      glow.className = 'note-shock-glow';
+      glow.style.left = cx + 'px';
+      glow.style.top = cy + 'px';
+      glow.style.background = glowGradient;
+
+      const ring = document.createElement('div');
+      ring.className = 'note-shock-ring';
+      ring.style.left = cx + 'px';
+      ring.style.top = cy + 'px';
+      ring.style.borderColor = ringColor;
+      ring.style.boxShadow = '0 0 10px ' + ringColor;
+
+      container.appendChild(glow);
+      container.appendChild(ring);
+      const cleanup = function(node) { if (node && node.parentNode) node.parentNode.removeChild(node); };
+      glow.addEventListener('animationend', function() { cleanup(glow); }, { once: true });
+      ring.addEventListener('animationend', function() { cleanup(ring); }, { once: true });
+      setTimeout(function() { cleanup(glow); cleanup(ring); }, 700);
+    }
+
+    window.setNoteColor = function(index, colorHex, skipShock) {
+      appliedNoteColors[index] = colorHex;
       if (isLoading || !noteSvgs || noteSvgs.length === 0) {
         pendingNotesToColor[index] = colorHex;
         return;
@@ -149,17 +212,22 @@
           children[i].style.fill = colorHex;
           children[i].style.stroke = colorHex;
         }
+        if (!skipShock) triggerNoteShock(el, colorHex);
       } catch (e) { console.error('Error in setNoteColor:', e); }
     };
 
     window.resetNoteColors = function() {
       for (const k in pendingNotesToColor) delete pendingNotesToColor[k];
+      for (const k in appliedNoteColors) delete appliedNoteColors[k];
+      document.querySelectorAll('.note-shock-glow, .note-shock-ring').forEach(function(n) {
+        if (n.parentNode) n.parentNode.removeChild(n);
+      });
       if (!noteSvgs) return;
       for (let i = 0; i < noteSvgs.length; i++) {
         const el = noteSvgs[i];
         if (el) {
           try {
-            el.style.fill = ''; el.style.stroke = '';
+            el.style.fill = ''; el.style.stroke = ''; el.style.filter = '';
             const children = el.querySelectorAll('path, ellipse, circle');
             for (let j = 0; j < children.length; j++) {
               children[j].style.fill = ''; children[j].style.stroke = '';
@@ -170,6 +238,7 @@
     };
 
     window.setCursor = function(index, colorHex) {
+      currentCursorColor = colorHex || '#2563eb';
       if (!osmd || !osmd.cursor || isLoading) {
         pendingCursor = { index: index, colorHex: colorHex };
         return;

@@ -29,9 +29,19 @@ object DurationEvaluator {
         )
     }
 
-    /** Rest notes cap tolerance at 20% so generous note-hold tolerance does not skip rests too early. */
+    /**
+     * Continuous-hold auto-advance caps early lead at 0.22s so long notes (half/whole)
+     * stay aligned with the metronome beat instead of finishing multiple beats early.
+     */
+    fun minAutoAdvanceDuration(expectedSec: Float, tolerancePercent: Int = 20): Float {
+        val leadSec = (expectedSec * (tolerancePercent / 100f)).coerceAtMost(0.22f)
+        return (expectedSec - leadSec).coerceAtLeast(0.15f)
+    }
+
+    /** Rest notes cap tolerance at 20% and lead at 0.22s to stay locked with the metronome. */
     fun minRestDuration(expectedSec: Float, tolerancePercent: Int = 20): Float {
         val restTolerance = tolerancePercent.coerceAtMost(20)
-        return (expectedSec * (1f - restTolerance / 100f)).coerceAtLeast(0.15f)
+        val leadSec = (expectedSec * (restTolerance / 100f)).coerceAtMost(0.22f)
+        return (expectedSec - leadSec).coerceAtLeast(0.15f)
     }
 }

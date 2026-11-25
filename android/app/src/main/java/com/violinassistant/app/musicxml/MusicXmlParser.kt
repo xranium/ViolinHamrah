@@ -84,7 +84,8 @@ object MusicXmlParser {
 
                 val durationInBeats = durationVal.toFloat() / divisions.toFloat()
                 val quarterSec = 60f / tempo
-                val expectedDurationSec = (durationInBeats * quarterSec * (4f / timeBeatType)).coerceAtLeast(0.1f)
+                // MusicXML <duration> is measured in <divisions> per quarter note regardless of beat-type.
+                val expectedDurationSec = (durationInBeats * quarterSec).coerceAtLeast(0.1f)
 
                 val tieStart = hasMatchingAttr(noteElem, "tie", "type", "start")
                 val tieStop = hasMatchingAttr(noteElem, "tie", "type", "stop")

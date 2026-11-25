@@ -81,8 +81,8 @@ class PracticeEngine(
             lastCorrectTimestampMs = timestampMs
 
             val sustainedSec = (timestampMs - notePitchStartTimestamp!!) / 1000f
-            val minAcceptable = (currentNote.expectedDurationSec * (1f - tolerancePercent / 100f)).coerceAtLeast(0.15f)
-            if (sustainedSec >= minAcceptable) {
+            val autoAdvanceMin = DurationEvaluator.minAutoAdvanceDuration(currentNote.expectedDurationSec, tolerancePercent)
+            if (sustainedSec >= autoAdvanceMin) {
                 val durResult = DurationEvaluator.evaluate(currentNote.expectedDurationSec, sustainedSec, tolerancePercent)
                 notePitchStartTimestamp = null
                 lastCorrectTimestampMs = null

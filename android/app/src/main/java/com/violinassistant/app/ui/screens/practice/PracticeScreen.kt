@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import com.violinassistant.app.audio.CountdownPhase
 import com.violinassistant.app.audio.MetronomeState
 import com.violinassistant.app.data.ScoreEntity
+import com.violinassistant.app.localization.Fa
 import com.violinassistant.app.model.NoteStatus
 import com.violinassistant.app.practice.EngineStatus
 import com.violinassistant.app.practice.PracticeEngineState
@@ -171,10 +172,21 @@ fun PracticeScreen(
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Floating Error Bubble
+                // Floating Error Bubble with directional finger guidance
+                val fingerGuidance = remember(isWrongPitch, currentNote?.id, detected?.midi, detected?.centsDeviation) {
+                    if (!isWrongPitch || currentNote == null || currentNote.isRest || detected == null) null
+                    else when {
+                        detected.midi < currentNote.midi -> Fa.FINGER_MOVE_HIGHER
+                        detected.midi > currentNote.midi -> Fa.FINGER_MOVE_LOWER
+                        detected.centsDeviation < 0 -> Fa.FINGER_MOVE_HIGHER
+                        detected.centsDeviation > 0 -> Fa.FINGER_MOVE_LOWER
+                        else -> null
+                    }
+                }
                 WrongNoteBubble(
                     isWrong = isWrongPitch,
-                    triggerKey = detected?.midi to detected?.centsDeviation,
+                    guidanceText = fingerGuidance,
+                    triggerKey = Triple(detected?.midi, detected?.centsDeviation, fingerGuidance),
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = 16.dp)

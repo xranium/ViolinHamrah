@@ -8,6 +8,9 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -31,6 +34,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun WrongNoteBubble(
     isWrong: Boolean,
+    guidanceText: String? = null,
     triggerKey: Any? = null,
     modifier: Modifier = Modifier,
     dismissDelayMs: Long = 900L
@@ -59,12 +63,23 @@ fun WrongNoteBubble(
                 .padding(horizontal = 18.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = Fa.WRONG_NOTE_BUBBLE,
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = Fa.WRONG_NOTE_BUBBLE,
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                if (!guidanceText.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = guidanceText,
+                        color = Color.White.copy(alpha = 0.94f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
         }
     }
 }
