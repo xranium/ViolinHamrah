@@ -52,6 +52,7 @@ fun PracticeScreen(
     var scale by remember { mutableStateOf(prefs.getFloat("sheet_scale", 100f)) }
     var measuresPerLine by remember { mutableStateOf(prefs.getInt("sheet_measures_per_line", 2)) }
     var pendingAutoStart by remember { mutableStateOf(false) }
+    var showColorGuide by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -129,8 +130,13 @@ fun PracticeScreen(
             isMetronomeMuted = metronomeState.isMuted,
             beatPulseCount = metronomeState.beatPulseCount,
             onToggleMetronomeMute = onToggleMetronomeMute,
+            onOpenColorGuide = { showColorGuide = true },
             onOpenThemeDialog = onOpenThemeDialog
         )
+
+        if (showColorGuide) {
+            ColorLegendSheet(onDismiss = { showColorGuide = false })
+        }
 
         if (!micError.isNullOrBlank()) {
             Box(

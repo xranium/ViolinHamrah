@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +40,7 @@ fun PracticeTopBar(
     isMetronomeMuted: Boolean = false,
     beatPulseCount: Long = 0L,
     onToggleMetronomeMute: () -> Unit = {},
+    onOpenColorGuide: () -> Unit = {},
     onOpenThemeDialog: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -111,8 +113,20 @@ fun PracticeTopBar(
             }
 
             IconButton(
+                onClick = onOpenColorGuide,
+                modifier = Modifier.size(44.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Info,
+                    contentDescription = "راهنمای رنگ نت‌ها",
+                    tint = colors.textSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            IconButton(
                 onClick = onOpenThemeDialog,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(44.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Palette,
