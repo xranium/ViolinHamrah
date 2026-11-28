@@ -86,17 +86,20 @@ fun ScoreNotationView(
                             completedColors.clear()
                             webView.evaluateJavascript("window.resetNoteColors();", null)
                         }
-                        // Permanent SVG note coloring for accepted notes
+                        // Permanent SVG note coloring for passed notes only
                         if (noteStatuses.isNotEmpty()) {
                             noteStatuses.forEach { (idx, status) ->
-                                val color = when (status) {
-                                    NoteStatus.CORRECT -> "#10b981"
-                                    NoteStatus.WRONG_DURATION -> "#f59e0b"
-                                    else -> null
-                                }
-                                if (color != null && completedColors[idx] != color) {
-                                    completedColors[idx] = color
-                                    webView.evaluateJavascript("window.setNoteColor($idx, '$color');", null)
+                                if (idx < currentNoteIndex) {
+                                    val color = when (status) {
+                                        NoteStatus.CORRECT -> "#10b981"
+                                        NoteStatus.WRONG_DURATION -> "#f59e0b"
+                                        NoteStatus.WRONG_PITCH -> "#ef4444"
+                                        else -> null
+                                    }
+                                    if (color != null && completedColors[idx] != color) {
+                                        completedColors[idx] = color
+                                        webView.evaluateJavascript("window.setNoteColor($idx, '$color');", null)
+                                    }
                                 }
                             }
                         } else if (currentNoteIndex > prevIndex) {

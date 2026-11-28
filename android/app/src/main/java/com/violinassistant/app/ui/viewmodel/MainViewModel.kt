@@ -91,6 +91,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 glitchGraceMs = 280L,
                 minWrongNoteVolume = 0.03f,
                 syncToBeatOnAutoAdvance = true,
+                pitchToleranceCents = AppConfig.PITCH_TOLERANCE_CENTS,
+                acceptedPitchBandCents = AppConfig.ACCEPTED_PITCH_BAND_CENTS,
                 onStateChange = { newState ->
                     _engineState.value = newState
                     audioCoordinator.syncMetronomeWithEngineState(newState)

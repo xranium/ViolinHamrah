@@ -14,6 +14,8 @@ class PracticeEngine(
     private val glitchGraceMs: Long = 0L,
     private val minWrongNoteVolume: Float = 0f,
     private val syncToBeatOnAutoAdvance: Boolean = false,
+    private val pitchToleranceCents: Int = 50,
+    private val acceptedPitchBandCents: Int = 50,
     private val onStateChange: ((PracticeEngineState) -> Unit)? = null
 ) {
     companion object {
@@ -30,6 +32,9 @@ class PracticeEngine(
     private var notePitchStartTimestamp: Long? = null
     private var lastCorrectTimestampMs: Long? = null
     private var restSoundFrames: Int = 0
+    private var greenTimeMs: Long = 0L
+    private var orangeTimeMs: Long = 0L
+    private var lastAcceptedSampleTs: Long? = null
     private var lastPitchCents: Int = 0
     private var sessionStartTime: Long = 0L
 
@@ -46,6 +51,7 @@ class PracticeEngine(
         notePitchStartTimestamp = null
         lastCorrectTimestampMs = null
         restSoundFrames = 0
+        resetBandStats()
         lastPitchCents = 0
         debouncer?.reset()
         sessionStartTime = System.currentTimeMillis()
@@ -74,15 +80,27 @@ class PracticeEngine(
             return
         }
 
-        lastPitchCents = pitchResult.centsDeviation
-        if (filteredMidi == currentNote.midi) {
+        val centsOff = (filteredMidi - currentNote.midi) * 100 + pitchResult.centsDeviation
+        val isAccepted = if (acceptedPitchBandCents <= pitchToleranceCents) {
+            filteredMidi == currentNote.midi
+        } else {
+            kotlin.math.abs(centsOff) <= acceptedPitchBandCents
+        }
+        val isInGreenZone = acceptedPitchBandCents <= pitchToleranceCents || kotlin.math.abs(centsOff) <= pitchToleranceCents
+
+        lastPitchCents = centsOff
+        if (isAccepted) {
             if (noteStatuses[currentIndex] == NoteStatus.WRONG_PITCH) {
                 noteStatuses[currentIndex] = NoteStatus.ACTIVE
             }
             if (notePitchStartTimestamp == null) {
                 notePitchStartTimestamp = timestampMs
                 status = EngineStatus.MEASURING_DURATION
+                resetBandStats()
             }
+            val dt = if (lastAcceptedSampleTs != null) (timestampMs - lastAcceptedSampleTs!!).coerceAtLeast(1L) else 25L
+            if (isInGreenZone) greenTimeMs += dt else orangeTimeMs += dt
+            lastAcceptedSampleTs = timestampMs
             lastCorrectTimestampMs = timestampMs
 
             val sustainedSec = (timestampMs - notePitchStartTimestamp!!) / 1000f
@@ -91,9 +109,10 @@ class PracticeEngine(
             )
             if (sustainedSec >= autoAdvanceMin) {
                 val durResult = DurationEvaluator.evaluate(currentNote.expectedDurationSec, sustainedSec, tolerancePercent)
+                val mostlyInTune = greenTimeMs >= orangeTimeMs
                 notePitchStartTimestamp = null
                 lastCorrectTimestampMs = null
-                advanceCurrentNote(true, durResult.isAcceptable, pitchResult.centsDeviation, sustainedSec, timestampMs)
+                advanceCurrentNote(mostlyInTune, durResult.isAcceptable, centsOff, sustainedSec, timestampMs)
                 notifyState(null)
             } else {
                 notifyState(pitchResult)
@@ -151,6 +170,7 @@ class PracticeEngine(
         notePitchStartTimestamp = null
         lastCorrectTimestampMs = null
         restSoundFrames = 0
+        resetBandStats()
         noteStatuses[currentIndex] = NoteStatus.WRONG_PITCH
         totalWrongAttempts++
         currentNoteWrongCount++
@@ -169,15 +189,17 @@ class PracticeEngine(
             }
             val endTs = if (glitchGraceMs > 0L) lastValidTs else timestampMs
             val sustainedSec = ((endTs - startTs) / 1000f).coerceAtLeast(0f)
+            val mostlyInTune = greenTimeMs >= orangeTimeMs
             notePitchStartTimestamp = null
             lastCorrectTimestampMs = null
+            resetBandStats()
             if (sustainedSec < TRANSIENT_THRESHOLD_SEC) {
                 status = EngineStatus.WAITING_FOR_NOTE
                 notifyState(pitchResult)
                 return
             }
             val durResult = DurationEvaluator.evaluate(currentNote.expectedDurationSec, sustainedSec, tolerancePercent)
-            advanceCurrentNote(true, durResult.isAcceptable, lastPitchCents, sustainedSec, timestampMs)
+            advanceCurrentNote(mostlyInTune, durResult.isAcceptable, lastPitchCents, sustainedSec, timestampMs)
         }
         notifyState(pitchResult)
     }
@@ -198,18 +220,26 @@ class PracticeEngine(
                 wrongAttemptsCount = currentNoteWrongCount
             )
         )
-        noteStatuses[currentIndex] = if (pitchCorrect && durationCorrect) {
-            status = EngineStatus.COMPLETED_CORRECTLY
-            NoteStatus.CORRECT
-        } else {
-            status = EngineStatus.COMPLETED_WITH_ERROR
-            NoteStatus.WRONG_DURATION
+        noteStatuses[currentIndex] = when {
+            !pitchCorrect -> {
+                status = EngineStatus.COMPLETED_WITH_ERROR
+                NoteStatus.WRONG_PITCH
+            }
+            !durationCorrect -> {
+                status = EngineStatus.COMPLETED_WITH_ERROR
+                NoteStatus.WRONG_DURATION
+            }
+            else -> {
+                status = EngineStatus.COMPLETED_CORRECTLY
+                NoteStatus.CORRECT
+            }
         }
         currentIndex++
         currentNoteWrongCount = 0
         notePitchStartTimestamp = null
         lastCorrectTimestampMs = null
         restSoundFrames = 0
+        resetBandStats()
         debouncer?.startDebounce(timestampMs)
         if (currentIndex >= notes.size) {
             status = EngineStatus.FINISHED
@@ -231,6 +261,12 @@ class PracticeEngine(
             sessionStartTime = sessionStartTime,
             sessionDurationSec = (System.currentTimeMillis() - sessionStartTime) / 1000L
         )
+    }
+
+    private fun resetBandStats() {
+        greenTimeMs = 0L
+        orangeTimeMs = 0L
+        lastAcceptedSampleTs = null
     }
 
     private fun notifyState(pitchResult: PitchResult?) {

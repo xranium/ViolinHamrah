@@ -20,6 +20,7 @@ object AppConfig {
      * مقدار پیش‌فرض: 30 سِنت
      */
     const val PITCH_TOLERANCE_CENTS = 50
+    const val ACCEPTED_PITCH_BAND_CENTS = 150
 
     /**
      * درصد تلورانس و خطای مجاز برای کشش زمانی (دیرند) نتها:

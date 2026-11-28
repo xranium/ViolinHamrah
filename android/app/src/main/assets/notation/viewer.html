@@ -165,11 +165,15 @@
       const cRect = container.getBoundingClientRect();
       const cx = (nRect.left - cRect.left) + (nRect.width / 2);
       const cy = (nRect.top - cRect.top) + (nRect.height / 2);
-      const isAmber = (colorHex || '').toLowerCase() === '#f59e0b';
-      const ringColor = isAmber ? '#facc15' : '#10b981';
+      const hex = (colorHex || '').toLowerCase();
+      const isAmber = hex === '#f59e0b';
+      const isRed = hex === '#ef4444';
+      const ringColor = isAmber ? '#facc15' : (isRed ? '#ef4444' : '#10b981');
       const glowGradient = isAmber
         ? 'radial-gradient(circle, rgba(250,204,21,0.78) 0%, rgba(245,158,11,0.34) 48%, rgba(245,158,11,0) 72%)'
-        : 'radial-gradient(circle, rgba(52,211,153,0.78) 0%, rgba(16,185,129,0.34) 48%, rgba(16,185,129,0) 72%)';
+        : (isRed
+          ? 'radial-gradient(circle, rgba(248,113,113,0.78) 0%, rgba(239,68,68,0.34) 48%, rgba(239,68,68,0) 72%)'
+          : 'radial-gradient(circle, rgba(52,211,153,0.78) 0%, rgba(16,185,129,0.34) 48%, rgba(16,185,129,0) 72%)');
 
       el.style.filter = 'drop-shadow(0 0 7px ' + ringColor + ')';
       setTimeout(function() { if (el && el.style) el.style.filter = ''; }, 560);

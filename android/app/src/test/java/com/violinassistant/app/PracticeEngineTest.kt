@@ -235,4 +235,26 @@ class PracticeEngineTest {
         engine.processAudioInput(mockPitch(60), timestampMs = 1100L) // good enough
         assertEquals(NoteStatus.ACTIVE, engine.getState().noteStatuses[0])
     }
+
+    @Test
+    fun testOrangeBandAcceptedAsRedWhenHeldMostlyOrGreenWhenCorrectedQuickly() {
+        val bandEngine = PracticeEngine(
+            notes = notes, tolerancePercent = 45, syncToBeatOnAutoAdvance = true,
+            pitchToleranceCents = 50, acceptedPitchBandCents = 150
+        )
+        // Case 1: Start in orange (+100c => midi 61, 0c) for 150ms then correct to green (60, 0c) for 650ms -> CORRECT
+        bandEngine.processAudioInput(mockPitch(61), timestampMs = 1000L)
+        bandEngine.processAudioInput(mockPitch(61), timestampMs = 1150L)
+        bandEngine.processAudioInput(mockPitch(60), timestampMs = 1200L)
+        bandEngine.processAudioInput(mockPitch(60), timestampMs = 1800L)
+        assertEquals(1, bandEngine.getState().currentIndex)
+        assertEquals(NoteStatus.CORRECT, bandEngine.getState().noteStatuses[0])
+
+        // Case 2: Stay in orange (63 instead of 62 -> +100c) for most of note 2 -> advances, marked WRONG_PITCH (red)
+        bandEngine.processAudioInput(mockPitch(63), timestampMs = 2000L)
+        bandEngine.processAudioInput(mockPitch(63), timestampMs = 2600L)
+        bandEngine.processAudioInput(mockPitch(62), timestampMs = 2800L)
+        assertEquals(2, bandEngine.getState().currentIndex)
+        assertEquals(NoteStatus.WRONG_PITCH, bandEngine.getState().noteStatuses[1])
+    }
 }
